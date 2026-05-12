@@ -50,16 +50,14 @@ public sealed class Settings : Window, IDisposable
         SelectedTab = label;
     }
 
-    private ImRaii.IEndObject TabItem(string label)
+    private ImGuiTabItemFlags ConsumeSelectedTab(string label)
     {
-        var isSelected = string.Equals(SelectedTab, label, StringComparison.Ordinal);
-        if (isSelected)
+        if (string.Equals(SelectedTab, label, StringComparison.Ordinal))
         {
             SelectedTab = null;
-            var open = true;
-            return ImRaii.TabItem(label, ref open, ImGuiTabItemFlags.SetSelected);
+            return ImGuiTabItemFlags.SetSelected;
         }
-        return ImRaii.TabItem(label);
+        return ImGuiTabItemFlags.None;
     }
 
     private static void DrawOption(string label, string tooltip, bool val, Action<bool> setter, ref bool isDirty)
@@ -229,7 +227,7 @@ public sealed class Settings : Window, IDisposable
 
     private void DrawTabGeneral()
     {
-        using var tab = TabItem("General");
+        using var tab = ImRaii.TabItem("General", ConsumeSelectedTab("General"));
         if (!tab)
             return;
 
@@ -903,7 +901,7 @@ public sealed class Settings : Window, IDisposable
 
     private void DrawTabRecipeNote()
     {
-        using var tab = TabItem("Crafting Log");
+        using var tab = ImRaii.TabItem("Crafting Log", ConsumeSelectedTab("Crafting Log"));
         if (!tab)
             return;
 
@@ -983,7 +981,7 @@ public sealed class Settings : Window, IDisposable
 
     private void DrawTabMacroEditor()
     {
-        using var tab = TabItem("Macro Editor");
+        using var tab = ImRaii.TabItem("Macro Editor", ConsumeSelectedTab("Macro Editor"));
         if (!tab)
             return;
 
@@ -1005,7 +1003,7 @@ public sealed class Settings : Window, IDisposable
 
     private void DrawTabSynthHelper()
     {
-        using var tab = TabItem("Synthesis Helper");
+        using var tab = ImRaii.TabItem("Synthesis Helper", ConsumeSelectedTab("Synthesis Helper"));
         if (!tab)
             return;
 
@@ -1090,7 +1088,7 @@ public sealed class Settings : Window, IDisposable
 
     private void DrawTabAbout()
     {
-        using var tab = TabItem("About");
+        using var tab = ImRaii.TabItem("About", ConsumeSelectedTab("About"));
         if (!tab)
             return;
 

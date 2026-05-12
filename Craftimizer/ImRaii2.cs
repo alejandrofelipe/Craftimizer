@@ -1,4 +1,3 @@
-using Dalamud.Interface.Utility.Raii;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Bindings.ImPlot;
 using System;
@@ -8,78 +7,70 @@ namespace Craftimizer.Plugin;
 
 public static class ImRaii2
 {
-    private struct EndUnconditionally(Action endAction, bool success) : ImRaii.IEndObject, IDisposable
+    public struct RaiiObject : IDisposable
     {
-        private Action EndAction { get; } = endAction;
+        private readonly Action _endAction;
+        private readonly bool _conditionalEnd;
+        public readonly bool Success;
+        private bool _disposed;
 
-        public bool Success { get; } = success;
+        internal RaiiObject(Action endAction, bool success, bool conditionalEnd)
+        {
+            _endAction = endAction;
+            _conditionalEnd = conditionalEnd;
+            Success = success;
+            _disposed = false;
+        }
 
-        public bool Disposed { get; private set; } = false;
+        public static implicit operator bool(RaiiObject obj) => obj.Success;
+        public static bool operator true(RaiiObject obj) => obj.Success;
+        public static bool operator false(RaiiObject obj) => !obj.Success;
+        public static bool operator !(RaiiObject obj) => !obj.Success;
 
         public void Dispose()
         {
-            if (!Disposed)
+            if (!_disposed)
             {
-                EndAction();
-                Disposed = true;
+                if (!_conditionalEnd || Success)
+                    _endAction();
+                _disposed = true;
             }
         }
     }
 
-    private struct EndConditionally(Action endAction, bool success) : ImRaii.IEndObject, IDisposable
-    {
-        public bool Success { get; } = success;
-
-        public bool Disposed { get; private set; } = false;
-
-        private Action EndAction { get; } = endAction;
-
-        public void Dispose()
-        {
-            if (!Disposed)
-            {
-                if (Success)
-                {
-                    EndAction();
-                }
-
-                Disposed = true;
-            }
-        }
-    }
-
-    public static ImRaii.IEndObject GroupPanel(string name, float width, out float internalWidth)
+    public static RaiiObject GroupPanel(string name, float width, out float internalWidth)
     {
         internalWidth = ImGuiUtils.BeginGroupPanel(name, width);
-        return new EndUnconditionally(ImGuiUtils.EndGroupPanel, true);
+        return new RaiiObject(ImGuiUtils.EndGroupPanel, true, false);
     }
 
-    public static ImRaii.IEndObject Plot(string title_id, Vector2 size, ImPlotFlags flags)
+    public static RaiiObject Plot(string title_id, Vector2 size, ImPlotFlags flags)
     {
-        return new EndConditionally(new Action(ImPlot.EndPlot), ImPlot.BeginPlot(title_id, size, flags));
+        var success = ImPlot.BeginPlot(title_id, size, flags);
+        return new RaiiObject(ImPlot.EndPlot, success, true);
     }
 
-    public static ImRaii.IEndObject PushStyle(ImPlotStyleVar idx, Vector2 val)
-    {
-        ImPlot.PushStyleVar(idx, val);
-        return new EndUnconditionally(ImPlot.PopStyleVar, true);
-    }
-
-    public static ImRaii.IEndObject PushStyle(ImPlotStyleVar idx, float val)
+    public static RaiiObject PushStyle(ImPlotStyleVar idx, Vector2 val)
     {
         ImPlot.PushStyleVar(idx, val);
-        return new EndUnconditionally(ImPlot.PopStyleVar, true);
+        return new RaiiObject(ImPlot.PopStyleVar, true, false);
     }
 
-    public static ImRaii.IEndObject PushColor(ImPlotCol idx, Vector4 col)
+    public static RaiiObject PushStyle(ImPlotStyleVar idx, float val)
+    {
+        ImPlot.PushStyleVar(idx, val);
+        return new RaiiObject(ImPlot.PopStyleVar, true, false);
+    }
+
+    public static RaiiObject PushColor(ImPlotCol idx, Vector4 col)
     {
         ImPlot.PushStyleColor(idx, col);
-        return new EndUnconditionally(ImPlot.PopStyleColor, true);
+        return new RaiiObject(ImPlot.PopStyleColor, true, false);
     }
 
-    public static ImRaii.IEndObject TextWrapPos(float wrap_local_pos_x)
+    public static RaiiObject TextWrapPos(float wrap_local_pos_x)
     {
         ImGui.PushTextWrapPos(wrap_local_pos_x);
-        return new EndUnconditionally(ImGui.PopTextWrapPos, true);
+        return new RaiiObject(ImGui.PopTextWrapPos, true, false);
     }
 }
