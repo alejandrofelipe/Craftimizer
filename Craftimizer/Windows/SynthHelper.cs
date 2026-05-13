@@ -63,6 +63,9 @@ public sealed unsafe class SynthHelper : Window, IDisposable
     private SimulationState currentState;
     private SimulatedMacro Macro { get; } = new();
 
+    private List<ActionType> PlayedActions { get; } = [];
+    private bool CraftAutoSaved { get; set; }
+
     private BackgroundTask<int>? SolverTask { get; set; }
     private bool SolverRunning => (!SolverTask?.Completed) ?? false;
     private Solver.Solver? SolverObject { get; set; }
@@ -219,7 +222,10 @@ public sealed unsafe class SynthHelper : Window, IDisposable
 
         var isInCraftAction = Service.Condition[ConditionFlag.ExecutingCraftingAction];
         if (!isInCraftAction && wasInCraftAction)
+        {
             RefreshCurrentState();
+            TryAutoSaveMacro();
+        }
         wasInCraftAction = isInCraftAction;
 
         return true;
@@ -539,6 +545,8 @@ public sealed unsafe class SynthHelper : Window, IDisposable
         CurrentActionCount = 0;
         CurrentActionStates = new();
         CurrentState = GetCurrentState();
+        PlayedActions.Clear();
+        CraftAutoSaved = false;
     }
 
     private void OnUseAction(ActionType action)
@@ -552,10 +560,71 @@ public sealed unsafe class SynthHelper : Window, IDisposable
         (_, CurrentState) = new SimNoRandom().Execute(GetCurrentState(), action);
         CurrentActionCount = CurrentState.ActionCount;
         CurrentActionStates = CurrentState.ActionStates;
+        PlayedActions.Add(action);
     }
 
     private void RefreshCurrentState() =>
         CurrentState = GetCurrentState();
+
+    private void TryAutoSaveMacro()
+    {
+        if (CraftAutoSaved)
+            return;
+        if (!Service.Configuration.AutoSaveCraftMacro)
+            return;
+        if (PlayedActions.Count == 0)
+            return;
+        if (SimulationInput == null || RecipeData == null)
+            return;
+
+        // Only save on successful completion (progress reached max)
+        if (CurrentState.Progress < SimulationInput.Recipe.MaxProgress)
+            return;
+
+        CraftAutoSaved = true;
+
+        var newScore = SimulationInput.Recipe.MaxQuality > 0
+            ? (float)CurrentState.Quality / SimulationInput.Recipe.MaxQuality
+            : 1f;
+
+        var recipeId = RecipeData.RecipeId;
+        var itemName = RecipeData.Recipe.ItemResult.ValueNullable?.Name.ExtractText() ?? $"Recipe {recipeId}";
+        var actions = PlayedActions.ToArray();
+
+        var existing = Service.Configuration.Macros.FirstOrDefault(m => m.RecipeId == recipeId);
+
+        if (existing == null)
+        {
+            var macro = new Macro
+            {
+                Name = itemName,
+                RecipeId = recipeId,
+                SavedScore = newScore,
+            };
+            macro.Actions = actions;
+            Service.Configuration.AddMacro(macro);
+            Plugin.Plugin.DisplayNotification(new()
+            {
+                Content = $"Macro saved for \"{itemName}\".",
+                MinimizedText = "Craft macro saved",
+                Title = "Craftimizer",
+                Type = Dalamud.Interface.ImGuiNotification.NotificationType.Success
+            });
+        }
+        else if (newScore > existing.SavedScore)
+        {
+            existing.Actions = actions;
+            existing.SavedScore = newScore;
+            Service.Configuration.Save();
+            Plugin.Plugin.DisplayNotification(new()
+            {
+                Content = $"Better result found! Macro updated for \"{itemName}\" ({existing.SavedScore * 100:F0}% → {newScore * 100:F0}%).",
+                MinimizedText = "Craft macro updated",
+                Title = "Craftimizer",
+                Type = Dalamud.Interface.ImGuiNotification.NotificationType.Success
+            });
+        }
+    }
 
     private SimulationState GetCurrentState()
     {

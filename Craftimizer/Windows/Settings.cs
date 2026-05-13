@@ -1029,6 +1029,15 @@ public sealed class Settings : Window, IDisposable
         );
 
         DrawOption(
+            "Auto-Save Successful Crafts",
+            "Automatically saves the actions used when a craft completes successfully. " +
+            "If a macro for that recipe already exists, it is only overwritten when the new result has higher quality.",
+            Config.AutoSaveCraftMacro,
+            v => Config.AutoSaveCraftMacro = v,
+            ref isDirty
+        );
+
+        DrawOption(
             "Simulate Only First Step",
             "Only the first step is simulated by default. You can still " +
             "hover over the other steps to view their outcomes, but the " +

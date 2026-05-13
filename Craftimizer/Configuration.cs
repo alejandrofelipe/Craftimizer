@@ -101,6 +101,9 @@ public class Macro
     public static event Action<Macro>? OnMacroChanged;
 
     public string Name { get; set; } = string.Empty;
+    public ushort? RecipeId { get; set; }
+    /// <summary>Score from 0 to 1 representing quality/collectability achieved. Used to determine if a newer craft result is better.</summary>
+    public float SavedScore { get; set; }
     [JsonInclude] [JsonPropertyName("Actions")]
     internal ActionType[] actions { get; set; } = [];
     [JsonIgnore]
@@ -191,6 +194,7 @@ public partial class Configuration
 
     public bool EnableSynthHelper { get; set; } = true;
     public bool DisableSynthHelperOnMacro { get; set; } = true;
+    public bool AutoSaveCraftMacro { get; set; } = true;
     public bool ShowOptimalMacroStat { get; set; } = true;
     public bool SuggestMacroAutomatically { get; set; }
     public bool ShowCommunityMacros { get; set; } = true;
