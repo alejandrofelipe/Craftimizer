@@ -472,6 +472,38 @@ public sealed unsafe class RecipeNote : Window, IDisposable
 
         ImGuiHelpers.ScaledDummy(5);
 
+        {
+            var task = SuggestedMacroTask;
+            if (task != null && !task.Completed)
+            {
+                if (task.Cancelling)
+                {
+                    using var _disabled = ImRaii.Disabled();
+                    ImGui.Button("Stopping", new(availWidth, 0));
+                }
+                else
+                {
+                    if (ImGui.Button("Stop", new(availWidth, 0)))
+                        task.Cancel();
+                }
+            }
+            else
+            {
+                var hasResult = task?.Result != null;
+                var label = hasResult ? "Regenerate" : "Suggest Macro";
+                if (ImGui.Button(label, new(availWidth, 0)))
+                    CalculateSuggestedMacro();
+                if (ImGui.IsItemHovered())
+                    ImGuiUtils.TooltipWrapped(hasResult
+                        ? "Generate a new macro suggestion from scratch, discarding the current one."
+                        : "Suggest a way to finish the crafting recipe. " +
+                          "Results aren't perfect, and levels of success " +
+                          "can vary wildly depending on the solver's settings.");
+            }
+        }
+
+        ImGuiHelpers.ScaledDummy(3);
+
         if (ImGui.Button("View Saved Macros", new(availWidth, 0)))
             Service.Plugin.OpenMacroListWindow();
 
