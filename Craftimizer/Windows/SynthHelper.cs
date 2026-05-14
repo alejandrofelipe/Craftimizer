@@ -483,12 +483,16 @@ public sealed unsafe class SynthHelper : Window, IDisposable
         }
         else
         {
-            if (ImGui.Button("Retry", new(-1, 0)))
+            var hasMacro = Macro.Count > 0;
+            var label = hasMacro ? "Generate New" : "Suggest Macro";
+            if (ImGui.Button(label, new(-1, 0)))
                 AttemptRetry();
             if (ImGui.IsItemHovered())
-                ImGuiUtils.TooltipWrapped("Suggest a way to finish the crafting recipe. " +
-                                 "Results aren't perfect, and levels of success " +
-                                 "can vary wildly depending on the solver's settings.");
+                ImGuiUtils.TooltipWrapped(hasMacro
+                    ? "Generate a new macro suggestion from scratch, discarding the current one."
+                    : "Suggest a way to finish the crafting recipe. " +
+                      "Results aren't perfect, and levels of success " +
+                      "can vary wildly depending on the solver's settings.");
         }
 
         if (ImGui.Button("Open in Macro Editor", new(-1, 0)))
