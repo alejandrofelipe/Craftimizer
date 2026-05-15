@@ -930,8 +930,12 @@ public sealed unsafe class RecipeNote : Window, IDisposable
 
                         ImGui.SameLine(0, spacing);
 
-                        ImGuiUtils.AlignMiddle(calcTextSize, new(calcTextSize.X, windowHeight));
-                        ImGui.TextUnformatted("Calculating...");
+                        var displayText = solver.IsIndeterminate 
+                            ? "Initializing..." 
+                            : $"Calculating... {fraction * 100:N0}%";
+                        var displayTextSize = ImGui.CalcTextSize(displayText);
+                        ImGuiUtils.AlignMiddle(displayTextSize, new(displayTextSize.X, windowHeight));
+                        ImGui.TextUnformatted(displayText);
                         ImGui.SetCursorPos(c + new Vector2(0, windowHeight + ImGui.GetStyle().ItemSpacing.Y - 1));
                         break;
                     }

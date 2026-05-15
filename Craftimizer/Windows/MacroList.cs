@@ -77,11 +77,15 @@ public sealed class MacroList : Window, IDisposable
     public override void Draw()
     {
         DrawSearchBar();
+        DrawPagination();
         using var group = ImRaii.Child("macros", new(-1, -1));
         if (sortedMacros.Count > 0)
         {
             var width = ImGui.GetContentRegionAvail().X;
-            var macros = new List<Macro>(sortedMacros);
+            var totalPages = (int)Math.Ceiling(sortedMacros.Count / (float)MacrosPerPage);
+            var startIdx = currentPage * MacrosPerPage;
+            var endIdx = Math.Min(startIdx + MacrosPerPage, sortedMacros.Count);
+            var macros = sortedMacros.GetRange(startIdx, endIdx - startIdx);
             for (var i = 0; i < macros.Count; ++i)
             {
                 var pos = ImGui.GetCursorPos();
@@ -103,7 +107,7 @@ public sealed class MacroList : Window, IDisposable
                         if (_target)
                         {
                             if (ImGuiExtras.AcceptDragDropPayload("macroListItem", out int j))
-                                Service.Configuration.MoveMacro(j, i);
+                            Service.Configuration.MoveMacro(startIdx + j, startIdx + i);
                         }
                     }
                 }
@@ -136,14 +140,44 @@ public sealed class MacroList : Window, IDisposable
         }
     }
 
+    private const int MacrosPerPage = 20;
     private string searchText = string.Empty;
     private List<Macro> sortedMacros = null!;
     private bool isUnsorted = true;
+    private int currentPage = 0;
     private void DrawSearchBar()
     {
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
         if (ImGui.InputTextWithHint("##search", "Search", ref searchText, 100))
             RefreshSearch();
+    }
+
+    private void DrawPagination()
+    {
+        if (sortedMacros.Count <= MacrosPerPage)
+            return;
+
+        var totalPages = (int)Math.Ceiling(sortedMacros.Count / (float)MacrosPerPage);
+        var availWidth = ImGui.GetContentRegionAvail().X;
+        var buttonWidth = 80f;
+        var spacing = ImGui.GetStyle().ItemSpacing.X;
+
+        using var disabled = ImRaii.Disabled(currentPage == 0);
+        if (ImGui.Button("<< Previous", new(buttonWidth, 0)))
+            currentPage = Math.Max(0, currentPage - 1);
+        disabled.Dispose();
+
+        ImGui.SameLine();
+        var pageText = $"Page {currentPage + 1} / {totalPages} ({sortedMacros.Count} macros)";
+        var textWidth = ImGui.CalcTextSize(pageText).X;
+        ImGui.SetCursorPosX((availWidth - textWidth) / 2f);
+        ImGui.TextUnformatted(pageText);
+
+        ImGui.SameLine();
+        ImGui.SetCursorPosX(availWidth - buttonWidth);
+        using var disabled2 = ImRaii.Disabled(currentPage >= totalPages - 1);
+        if (ImGui.Button("Next >>", new(buttonWidth, 0)))
+            currentPage = Math.Min(totalPages - 1, currentPage + 1);
     }
 
     private void DrawMacro(Macro macro, float width = -1)
@@ -341,6 +375,7 @@ public sealed class MacroList : Window, IDisposable
 
     private void RefreshSearch()
     {
+        currentPage = 0;
         if (string.IsNullOrWhiteSpace(searchText))
         {
             sortedMacros = [.. Macros];
