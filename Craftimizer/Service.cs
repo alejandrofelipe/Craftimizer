@@ -33,6 +33,7 @@ public sealed class Service
 
     public static Plugin Plugin { get; private set; }
     public static Configuration Configuration => Plugin.Configuration;
+    public static MacroRepository MacroRepository => Plugin.MacroRepository;
     public static IconManager IconManager => Plugin.IconManager;
     public static WindowSystem WindowSystem => Plugin.WindowSystem;
     public static CommunityMacros CommunityMacros => Plugin.CommunityMacros;

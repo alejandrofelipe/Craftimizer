@@ -100,10 +100,27 @@ public class Macro
 {
     public static event Action<Macro>? OnMacroChanged;
 
-    public string Name { get; set; } = string.Empty;
+    /// <summary>SQLite row ID. 0 when not yet persisted.</summary>
+    [JsonIgnore]
+    internal int Id { get; set; }
+
+    private string _name = string.Empty;
+    public string Name
+    {
+        get => _name;
+        set { _name = value; OnMacroChanged?.Invoke(this); }
+    }
+
     public ushort? RecipeId { get; set; }
+
+    private float _savedScore;
     /// <summary>Score from 0 to 1 representing quality/collectability achieved. Used to determine if a newer craft result is better.</summary>
-    public float SavedScore { get; set; }
+    public float SavedScore
+    {
+        get => _savedScore;
+        set { _savedScore = value; OnMacroChanged?.Invoke(this); }
+    }
+
     [JsonInclude] [JsonPropertyName("Actions")]
     internal ActionType[] actions { get; set; } = [];
     [JsonIgnore]
@@ -120,6 +137,17 @@ public class Macro
             actions = [.. value];
             OnMacroChanged?.Invoke(this);
         }
+    }
+
+    /// <summary>
+    /// Sets backing fields directly, bypassing <see cref="OnMacroChanged"/>.
+    /// Used by <see cref="Craftimizer.Utils.MacroRepository"/> when loading from the database.
+    /// </summary>
+    internal void SetFieldsDirect(string name, ushort? recipeId, float savedScore)
+    {
+        _name = name;
+        RecipeId = recipeId;
+        _savedScore = savedScore;
     }
 }
 
@@ -183,7 +211,7 @@ public partial class Configuration
     [JsonInclude] [JsonPropertyName("Macros")]
     internal List<Macro> macros { get; private set; } = [];
     [JsonIgnore]
-    public IReadOnlyList<Macro> Macros => macros;
+    public IReadOnlyList<Macro> Macros => Service.MacroRepository.Macros;
     public int ReliabilitySimulationCount { get; set; } = 1000;
     public bool ConditionRandomness { get; set; } = true;
 
@@ -214,33 +242,25 @@ public partial class Configuration
 
     public void AddMacro(Macro macro)
     {
-        macros.Add(macro);
-        Save();
+        Service.MacroRepository.Add(macro);
         OnMacroListChanged?.Invoke();
     }
 
     public void RemoveMacro(Macro macro)
     {
-        if (macros.Remove(macro))
-        {
-            Save();
-            OnMacroListChanged?.Invoke();
-        }
+        Service.MacroRepository.Remove(macro);
+        OnMacroListChanged?.Invoke();
     }
 
     public void SwapMacros(int i, int j)
     {
-        (macros[i], macros[j]) = (macros[j], macros[i]);
-        Save();
+        Service.MacroRepository.Swap(i, j);
         OnMacroListChanged?.Invoke();
     }
 
     public void MoveMacro(int fromIdx, int toIdx)
     {
-        var macro = macros[fromIdx];
-        macros.RemoveAt(fromIdx);
-        macros.Insert(toIdx, macro);
-        Save();
+        Service.MacroRepository.Move(fromIdx, toIdx);
         OnMacroListChanged?.Invoke();
     }
 

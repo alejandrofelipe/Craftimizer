@@ -29,6 +29,7 @@ public sealed class Plugin : IDalamudPlugin
     public MacroClipboard? ClipboardWindow { get; private set; }
 
     public Configuration Configuration { get; }
+    public MacroRepository MacroRepository { get; }
     public IconManager IconManager { get; }
     public Hooks Hooks { get; }
     public CommunityMacros CommunityMacros { get; }
@@ -40,7 +41,15 @@ public sealed class Plugin : IDalamudPlugin
         Service.Initialize(this, pluginInterface);
 
         WindowSystem = new("Craftimizer");
+        MacroRepository = new();
         Configuration = Configuration.Load();
+        // Migrate macros from legacy JSON config on first run
+        if (Configuration.macros.Count > 0)
+        {
+            MacroRepository.MigrateFromJson(Configuration.macros);
+            Configuration.macros.Clear();
+            Configuration.Save();
+        }
         IconManager = new();
         Hooks = new();
         CommunityMacros = new();
@@ -181,5 +190,6 @@ public sealed class Plugin : IDalamudPlugin
         IconManager.Dispose();
         Hooks.Dispose();
         Icon.Dispose();
+        MacroRepository.Dispose();
     }
 }

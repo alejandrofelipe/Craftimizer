@@ -617,8 +617,8 @@ public sealed unsafe class SynthHelper : Window, IDisposable
         }
         else if (newScore > existing.SavedScore)
         {
-            existing.Actions = actions;
             existing.SavedScore = newScore;
+            existing.Actions = actions;
             Service.Configuration.Save();
             Plugin.Plugin.DisplayNotification(new()
             {
