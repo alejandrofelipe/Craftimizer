@@ -4,7 +4,7 @@
 > Mude `[ ]` para `[x]`, registre o commit hash e a data na coluna "Feito em".
 > Não acumule múltiplos itens para atualizar de uma vez — marque cada um ao terminar.
 
-Última revisão: 2026-05-18
+Última revisão: 2026-05-18 → 2026-05-19 (gaps implementados — `9fa85fd`)
 
 ---
 
@@ -14,90 +14,62 @@
 |---|---|
 | P1 — Qualidade da sugestão + invalidação de stats | ✅ Completo |
 | P2 — Barra de progresso de execução de macro | ✅ Completo |
-| P3a — Redundâncias visuais Fase 1 + 2 | ✅ Completo (com gaps — ver abaixo) |
+| P3a — Redundâncias visuais Fase 1 + 2 | ✅ Completo |
 | P3b — Reorganização DDD Fase 0 + 5 | ✅ Completo |
-| P4a — Novos componentes visuais | ✅ Completo (com gaps — ver abaixo) |
+| P4a — Novos componentes visuais | ✅ Completo |
 | P4b — Reorganização DDD Fases 1→4 | ⬜ Não iniciado |
 
 ---
 
-## Gaps de P3a + P4a (pendentes)
+## Gaps de P3a + P4a (resolvidos em `9fa85fd`)
 
-### Gap 1 — `UIConstants` criado mas não conectado nas janelas
+### Gap 1 — `UIConstants` criado mas não conectado nas janelas ✅
 
-`UIConstants.cs` existe com todas as constantes corretas, mas os arquivos de janela
-ainda usam os magic numbers originais inline.
-
-| Arquivo | Linha | Valor inline | Constante a usar | Status | Feito em |
-|---|---|---|---|---|---|
-| `Windows/MacroList.cs` | 39 | `465, 520` | `UIConstants.MacroListMinWidth/Height` | [ ] | — |
-| `Windows/MacroList.cs` | 143 | `private const int MacrosPerPage = 20` | `UIConstants.MacrosPerPage` | [ ] | — |
-| `Windows/MacroEditor.cs` | 43–44 | `9000` (×2) | `UIConstants.MaxCraftStat` | [ ] | — |
-| `Windows/MacroEditor.cs` | 176 | `2184` | `UIConstants.MacroEditorMaxWidth` (a criar) | [ ] | — |
-| `Windows/SynthHelper.cs` | 89–90 | `494` (×2) | `UIConstants.SynthHelperWidth` | [ ] | — |
-
-> Observação: `MacroEditorMaxWidth = 2184` ainda **não existe** em `UIConstants.cs` — precisa ser
-> adicionado ao arquivo antes de substituir a linha 176 de `MacroEditor.cs`.
-
----
-
-### Gap 2 — `Colors.SpecialistGold` definido mas não usado onde deveria
-
-`Colors.SpecialistGold = new(0.99f, 0.97f, 0.62f, 1f)` existe em `Colors.cs`, mas dois
-arquivos ainda duplicam o valor inline.
-
-| Arquivo | Linha | Valor inline | Constante a usar | Status | Feito em |
-|---|---|---|---|---|---|
-| `Windows/RecipeNote.cs` | 571 | `new(0.99f, 0.97f, 0.62f, 1f)` | `Colors.SpecialistGold` | [ ] | — |
-| `Windows/MacroEditor.Character.cs` | 135 | `new Vector4(0.99f, 0.97f, 0.62f, 1f)` | `Colors.SpecialistGold` | [ ] | — |
-
----
-
-### Gap 3 — `DrawSolverProgressBar` definido mas nunca chamado
-
-`ImGuiUtils.DrawSolverProgressBar(float? progress, Vector2 size)` foi implementado,
-mas `SynthHelper.cs` ainda usa `DynamicBars.DrawProgressBar(solver)`.
-
-| Tarefa | Status | Feito em |
-|---|---|---|
-| Substituir `DynamicBars.DrawProgressBar(solver)` por `DrawSolverProgressBar` em `SynthHelper.cs` (linha ~313) | [ ] | — |
-
-> Observação: `DrawSolverProgressBar` é a barra fina indeterminada de P4a. `DynamicBars.DrawProgressBar`
-> é a barra existente com configuração de tipo (arcs / linear / etc.). Avaliar se devem coexistir
-> ou se a barra nova substitui completamente.
-
----
-
-### Gap 4 — `DrawBadge` (Redundância 3 do backlog visual) nunca extraído
-
-O helper `ImGuiUtils.DrawBadge(ILoadedTextureIcon icon, Vector2 size, string tooltip, Vector4? tint = null)`
-não foi criado. O padrão `ImGui.Image + IsItemHovered + Tooltip` ainda aparece inline:
-
-| Arquivo | Ocorrências | Status | Feito em |
+| Arquivo | Valor inline | Constante usada | Status |
 |---|---|---|---|
-| `Windows/MacroEditor.Character.cs` | Splendorous, Specialist, Manipulation (toggle buttons) | [ ] | — |
-| `Windows/RecipeNote.cs` | Specialist, food, medicine (badges passivas) | [ ] | — |
-
-> Nota: as badges em `MacroEditor.Character.cs` são **toggle buttons** — o helper a extrair é
-> `DrawBadgeButton(icon, size, tooltip, tint, ref bool value)`, não um helper passivo.
-> As de `RecipeNote.cs` são passivas e usam `DrawBadge` simples.
+| `Windows/MacroList.cs` | `465, 520` | `UIConstants.MacroListMinWidth/Height` | ✅ |
+| `Windows/MacroList.cs` | `private const int MacrosPerPage = 20` | `UIConstants.MacrosPerPage` | ✅ |
+| `Windows/MacroEditor.cs` | `9000` (×2) | `UIConstants.MaxCraftStat` | ✅ |
+| `Windows/MacroEditor.cs` | `2184` | `UIConstants.MacroEditorMaxWidth` | ✅ |
+| `Windows/SynthHelper.cs` | `494` (×2) | `UIConstants.SynthHelperWidth` | ✅ |
 
 ---
 
-### Gap 5 — Redundância 2: painéis de stats não compartilhados
+### Gap 2 — `Colors.SpecialistGold` definido mas não usado ✅
 
-`MacroEditor` e `RecipeNote` têm implementações independentes dos mesmos painéis de stats.
-Extrair dois métodos estáticos reutilizáveis para `ImGuiUtils`:
-
-| Tarefa | Status | Feito em |
+| Arquivo | Valor inline substituído | Status |
 |---|---|---|
-| Criar `ImGuiUtils.DrawCharacterStatsPanel(CharacterStats stats, ...)` | [ ] | — |
-| Criar `ImGuiUtils.DrawRecipeStatsPanel(RecipeData recipe, ...)` | [ ] | — |
-| Usar em `RecipeNote.cs` (substituir `DrawCharacterStats()` e `DrawRecipeStats()` privados) | [ ] | — |
-| Usar em `MacroEditor` (identificar qual partial class tem a implementação atual) | [ ] | — |
+| `Windows/RecipeNote.cs` | `new(0.99f, 0.97f, 0.62f, 1f)` | ✅ |
+| `Windows/MacroEditor.Character.cs` | `new Vector4(0.99f, 0.97f, 0.62f, 1f)` | ✅ |
 
-> Esforço maior: requer análise das diferenças entre as duas implementações antes de extrair
-> a versão canônica. Verificar se há variações de layout que impedem unificação total.
+---
+
+### Gap 3 — `DrawSolverProgressBar` x `DynamicBars.DrawProgressBar` ✅ (já resolvido)
+
+`DynamicBars.DrawProgressBar(solver)` em `SynthHelper.cs` é a implementação correta e
+completa — trata estado indeterminado, cores por estágio, tooltip e percentual.
+`ImGuiUtils.DrawSolverProgressBar` é um primitivo de design-system de nível mais baixo
+(animação shimmer); nenhuma substituição necessária em SynthHelper.
+
+---
+
+### Gap 4 — `DrawBadge` extraído ✅
+
+`ImGuiUtils.DrawBadge(ImTextureID handle, Vector2 size, string tooltip, Vector4? tint = null)`
+adicionado. Aplicado nas 3 badges passivas de `RecipeNote.DrawCharacterStats()`.
+
+As badges interativas de `MacroEditor.Character.cs` (toggle ImageButton com disabled state)
+têm padrão diferente e foram mantidas inline intencionalmente.
+
+---
+
+### Gap 5 — Painéis de stats compartilhados — Não viável ❌
+
+`RecipeNote.DrawCharacterStats()` mostra stats ao vivo do jogador com lógica de
+craftability (LockedClassJob, WrongClassJob, SpecialistRequired, etc.), map links e
+botão de troca de gearset. `MacroEditor` tem um formulário editável de inputs.
+São painéis fundamentalmente diferentes; unificação exigiria callbacks/delegates complexos
+sem ganho real de manutenibilidade.
 
 ---
 
