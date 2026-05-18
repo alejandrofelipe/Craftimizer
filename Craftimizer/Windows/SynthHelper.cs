@@ -1,3 +1,4 @@
+using Craftimizer.Application.Crafting;
 using Craftimizer.Plugin;
 using Craftimizer.Simulator;
 using Craftimizer.Simulator.Actions;
@@ -40,45 +41,20 @@ public sealed unsafe class SynthHelper : Window, IDisposable
     private const string WindowNameFloating = $"{WindowNamePinned}Floating";
 
     public AddonSynthesis* Addon { get; private set; }
-    public RecipeData? RecipeData { get; private set; }
-    public CharacterStats? CharacterStats { get; private set; }
-    public SimulationInput? SimulationInput { get; private set; }
-    public ActionType? NextAction => (ShouldOpen && Macro.Count > 0) ? Macro[0].Action : null;
+    public RecipeData? RecipeData => Session.RecipeData;
+    public CharacterStats? CharacterStats => Session.CharacterStats;
+    public SimulationInput? SimulationInput => Session.SimulationInput;
+    public ActionType? NextAction => ShouldOpen ? Session.NextAction : null;
     public bool ShouldDrawAnts => ShouldOpen && !IsCollapsed;
 
-    private int CurrentActionCount { get; set; }
-    private ActionStates CurrentActionStates { get; set; }
-    private SimulationState CurrentState
-    {
-        get => currentState;
-        set
-        {
-            if (currentState != value)
-            {
-                currentState = value;
-                OnStateUpdated();
-            }
-        }
-    }
-    private SimulationState currentState;
-    private SimulatedMacro Macro { get; }
-
+    private CraftingSession Session { get; }
     private readonly global::Craftimizer.Plugin.Plugin _plugin;
-
-    private List<ActionType> PlayedActions { get; } = [];
-    private bool CraftAutoSaved { get; set; }
-
-    private BackgroundTask<int>? SolverTask { get; set; }
-    private bool SolverRunning => (!SolverTask?.Completed) ?? false;
-    private bool SolverComparisonPending { get; set; }
-    private Solver.Solver? SolverObject { get; set; }
-
     private IFontHandle AxisFont { get; }
 
     public SynthHelper(global::Craftimizer.Plugin.Plugin plugin) : base(WindowNamePinned)
     {
         _plugin = plugin;
-        Macro = new(_plugin.Configuration);
+        Session = new CraftingSession(plugin);
         AxisFont = Service.PluginInterface.UiBuilder.FontAtlas.NewGameFontHandle(new(GameFontFamilyAndSize.Axis14));
 
         _plugin.Hooks.OnActionUsed += OnUseAction;
@@ -128,8 +104,6 @@ public sealed unsafe class SynthHelper : Window, IDisposable
     private bool ShouldCalculate => !IsCollapsed && ShouldOpen;
     private bool WasCalculatable { get; set; }
 
-    private bool IsRecalculateQueued { get; set; }
-
     public override void Update()
     {
         base.Update();
@@ -139,12 +113,12 @@ public sealed unsafe class SynthHelper : Window, IDisposable
         if (ShouldCalculate != WasCalculatable)
         {
             if (WasCalculatable)
-                SolverTask?.Cancel();
-            else if (Macro.Count == 0)
+                Session.CancelSolver();
+            else if (Session.Macro.Count == 0)
                 RefreshCurrentState();
         }
 
-        if (Macro.Count == 0 && ShouldOpen)
+        if (Session.Macro.Count == 0 && ShouldOpen)
         {
             if (ShouldOpen != WasOpen || IsCollapsed != WasCollapsed)
                 RefreshCurrentState();
@@ -177,7 +151,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
 
         if (recipeId == 0)
         {
-            RecipeData = null;
+            Session.ClearRecipe();
             return false;
         }
 
@@ -185,7 +159,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
 
         if (Addon == null)
         {
-            RecipeData = null;
+            Session.ClearRecipe();
             return false;
         }
 
@@ -212,32 +186,30 @@ public sealed unsafe class SynthHelper : Window, IDisposable
             }
         }
 
-        if (RecipeData?.RecipeId != recipeId)
+        if (Session.RecipeData?.RecipeId != recipeId)
         {
-            OnStartCrafting(recipeId);
-            OnStateUpdated();
+            var newRecipeData = new RecipeData(recipeId);
+            var characterStats = ComputeCharacterStats(newRecipeData);
+            Session.StartCrafting(newRecipeData, characterStats);
+            Session.SetCurrentState(GetCurrentState(), ShouldCalculate);
 
             if (_plugin.Configuration.CollapseSynthHelper) ShouldCollapse = true;
         }
 
-        if (IsRecalculateQueued)
-            OnStateUpdated();
+        if (Session.IsRecalculateQueued)
+            Session.SetCurrentState(GetCurrentState(), ShouldCalculate);
 
-        Macro.FlushQueue();
+        Session.FlushMacroQueue();
 
         // Once the solver finishes, compare its result against the saved macro and
         // use whichever is better as the displayed suggestion.
-        if (SolverComparisonPending && SolverTask?.Completed != false)
-        {
-            SolverComparisonPending = false;
-            TryUseBetterSavedMacro();
-        }
+        Session.TryFinalizeSolverComparison();
 
         var isInCraftAction = Service.Condition[ConditionFlag.ExecutingCraftingAction];
         if (!isInCraftAction && wasInCraftAction)
         {
-            RefreshCurrentState();
-            TryAutoSaveMacro();
+            Session.SetCurrentState(GetCurrentState(), ShouldCalculate);
+            Session.TryAutoSaveMacro();
         }
         wasInCraftAction = isInCraftAction;
 
@@ -310,7 +282,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
         DrawMacroExecutionProgress();
         DrawMacroActions();
 
-        if (SolverRunning && SolverObject is { } solver)
+        if (Session.SolverRunning && Session.SolverObject is { } solver)
         {
             ImGuiHelpers.ScaledDummy(5);
             ImGuiUtils.DrawStateChip(ImGuiUtils.SolverState.Solving);
@@ -319,14 +291,14 @@ public sealed unsafe class SynthHelper : Window, IDisposable
     }
 
     private SimulationState? hoveredState;
-    private SimulationState DisplayedState => hoveredState ?? (_plugin.Configuration.SynthHelperDisplayOnlyFirstStep ? Macro.FirstState : Macro.State);
+    private SimulationState DisplayedState => hoveredState ?? (_plugin.Configuration.SynthHelperDisplayOnlyFirstStep ? Session.Macro.FirstState : Session.Macro.State);
 
     private void DrawMacro()
     {
         var spacing = ImGui.GetStyle().ItemSpacing.X;
         var imageSize = ImGui.GetFrameHeight() * 2;
         var canExecute = !Service.Condition[ConditionFlag.ExecutingCraftingAction];
-        var lastState = Macro.InitialState;
+        var lastState = Session.Macro.InitialState;
         hoveredState = null;
 
         var itemsPerRow = (int)Math.Max(1, MathF.Floor((ImGui.GetContentRegionAvail().X + spacing) / (imageSize + spacing)));
@@ -334,12 +306,12 @@ public sealed unsafe class SynthHelper : Window, IDisposable
         using var _color = ImRaii.PushColor(ImGuiCol.Button, Vector4.Zero);
         using var _color3 = ImRaii.PushColor(ImGuiCol.ButtonHovered, Vector4.Zero);
         using var _color2 = ImRaii.PushColor(ImGuiCol.ButtonActive, Vector4.Zero);
-        var count = Macro.Count;
+        var count = Session.Macro.Count;
         for (var i = 0; i < count; i++)
         {
             if (i % itemsPerRow != 0)
                 ImGui.SameLine(0, spacing);
-            var (action, response, state) = (Macro[i].Action, Macro[i].Response, Macro[i].State);
+            var (action, response, state) = (Session.Macro[i].Action, Session.Macro[i].Response, Session.Macro[i].State);
             var actionBase = action.Base();
             var failedAction = response != ActionResponse.UsedAction;
             using var _id = ImRaii.PushId(i);
@@ -367,7 +339,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
 
                 isPressed = ImGuiExtras.ButtonBehavior(bb, id, out isHovered, out isHeld, ImGuiButtonFlags.None);
             }
-            ImGui.ImageButton(action.GetIcon(RecipeData!.ClassJob).Handle, new(imageSize), default, Vector2.One, 0, default, failedAction ? new(1, 1, 1, ImGui.GetStyle().DisabledAlpha) : Vector4.One);
+            ImGui.ImageButton(action.GetIcon(Session.RecipeData!.ClassJob).Handle, new(imageSize), default, Vector2.One, 0, default, failedAction ? new(1, 1, 1, ImGui.GetStyle().DisabledAlpha) : Vector4.One);
             if (isPressed && i == 0)
             {
                 if (ExecuteNextAction())
@@ -375,7 +347,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
             }
             if (isHovered)
             {
-                ImGuiUtils.Tooltip($"{action.GetName(RecipeData!.ClassJob)}\n" +
+                ImGuiUtils.Tooltip($"{action.GetName(Session.RecipeData!.ClassJob)}\n" +
                     $"{actionBase.GetTooltip(CreateSim(lastState), true)}" +
                     $"{(canExecute && i == 0 ? "Click or run /craftaction to execute" : string.Empty)}");
                 hoveredState = state;
@@ -434,28 +406,28 @@ public sealed unsafe class SynthHelper : Window, IDisposable
             }
         }
 
-        var reliability = Macro.GetReliability(RecipeData!, _plugin.Configuration.SynthHelperDisplayOnlyFirstStep ? 0 : ^1);
+        var reliability = Session.Macro.GetReliability(Session.RecipeData!, _plugin.Configuration.SynthHelperDisplayOnlyFirstStep ? 0 : ^1);
         {
             var mainBars = new List<DynamicBars.BarData>()
             {
-                new("Progress", Colors.Progress, reliability.Progress, state.Progress, RecipeData!.RecipeInfo.MaxProgress),
-                new("Quality", Colors.Quality, reliability.Quality, state.Quality, RecipeData.RecipeInfo.MaxQuality),
-                new("CP", Colors.CP, state.CP, CharacterStats!.CP),
+                new("Progress", Colors.Progress, reliability.Progress, state.Progress, Session.RecipeData!.RecipeInfo.MaxProgress),
+                new("Quality", Colors.Quality, reliability.Quality, state.Quality, Session.RecipeData.RecipeInfo.MaxQuality),
+                new("CP", Colors.CP, state.CP, Session.CharacterStats!.CP),
             };
-            if (RecipeData.RecipeInfo.MaxQuality <= 0)
+            if (Session.RecipeData.RecipeInfo.MaxQuality <= 0)
                 mainBars.RemoveAt(1);
             var halfBars = new List<DynamicBars.BarData>()
             {
-                new("Durability", Colors.Durability, state.Durability, RecipeData.RecipeInfo.MaxDurability),
+                new("Durability", Colors.Durability, state.Durability, Session.RecipeData.RecipeInfo.MaxDurability),
             };
-            if (RecipeData.IsCollectable)
-                halfBars.Add(new("Collectability", Colors.Collectability, reliability.ParamScore, state.Collectability, state.MaxCollectability, RecipeData.CollectableThresholds, $"{state.Collectability}", $"{state.MaxCollectability:0}"));
-            else if (RecipeData.Recipe.RequiredQuality > 0)
+            if (Session.RecipeData.IsCollectable)
+                halfBars.Add(new("Collectability", Colors.Collectability, reliability.ParamScore, state.Collectability, state.MaxCollectability, Session.RecipeData.CollectableThresholds, $"{state.Collectability}", $"{state.MaxCollectability:0}"));
+            else if (Session.RecipeData.Recipe.RequiredQuality > 0)
             {
-                var qualityPercent = (float)state.Quality / RecipeData.Recipe.RequiredQuality * 100;
+                var qualityPercent = (float)state.Quality / Session.RecipeData.Recipe.RequiredQuality * 100;
                 halfBars.Add(new("Quality %", Colors.HQ, reliability.ParamScore, qualityPercent, 100, null, $"{qualityPercent:0}%", null));
             }
-            else if (RecipeData.RecipeInfo.MaxQuality > 0)
+            else if (Session.RecipeData.RecipeInfo.MaxQuality > 0)
                 halfBars.Add(new("HQ %", Colors.HQ, reliability.ParamScore, state.HQPercent, 100, null, $"{state.HQPercent}%", null));
 
             if (halfBars.Count > 1)
@@ -481,9 +453,9 @@ public sealed unsafe class SynthHelper : Window, IDisposable
 
     private void DrawMacroActions()
     {
-        if (SolverRunning)
+        if (Session.SolverRunning)
         {
-            if (SolverTask?.Cancelling ?? false)
+            if (Session.SolverCancelling)
             {
                 using var _disabled = ImRaii.Disabled();
                 ImGui.Button("Stopping", new(-1, 0));
@@ -493,12 +465,12 @@ public sealed unsafe class SynthHelper : Window, IDisposable
             else
             {
                 if (ImGui.Button("Stop", new(-1, 0)))
-                    SolverTask?.Cancel();
+                    Session.CancelSolver();
             }
         }
         else
         {
-            var hasMacro = Macro.Count > 0;
+            var hasMacro = Session.Macro.Count > 0;
             var label = hasMacro ? "Generate New" : "Suggest Macro";
             if (ImGui.Button(label, new(-1, 0)))
                 AttemptRetry();
@@ -511,7 +483,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
         }
 
         if (ImGui.Button("Open in Macro Editor", new(-1, 0)))
-            _plugin.OpenMacroEditor(CharacterStats!, RecipeData!, new(Service.Objects.LocalPlayer!.StatusList), null, [], null);
+            _plugin.OpenMacroEditor(Session.CharacterStats!, Session.RecipeData!, new(Service.Objects.LocalPlayer!.StatusList), null, [], null);
     }
 
     public bool ExecuteNextAction()
@@ -520,7 +492,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
         var action = NextAction;
         if (canExecute && action != null)
         {
-            Chat.SendMessage($"/ac \"{action.Value.GetName(RecipeData!.ClassJob)}\"");
+            Chat.SendMessage($"/ac \"{action.Value.GetName(Session.RecipeData!.ClassJob)}\"");
             return true;
         }
         return false;
@@ -528,49 +500,20 @@ public sealed unsafe class SynthHelper : Window, IDisposable
 
     public void AttemptRetry()
     {
-        if (!SolverRunning)
-            CalculateBestMacro();
+        if (!Session.SolverRunning)
+            Session.RequestSolve();
     }
 
-    private void OnStartCrafting(ushort recipeId)
+    private static CharacterStats ComputeCharacterStats(RecipeData recipeData)
     {
-        var shouldUpdateInput = false;
-        if (recipeId != RecipeData?.RecipeId)
-        {
-            RecipeData = new(recipeId);
-            shouldUpdateInput = true;
-        }
+        var gearStats = Gearsets.CalculateGearsetCurrentStats();
 
-        {
-            var gearStats = Gearsets.CalculateGearsetCurrentStats();
+        var container = InventoryManager.Instance()->GetInventoryContainer(InventoryType.EquippedItems);
+        if (container == null)
+            throw new InvalidOperationException("Could not get inventory container");
 
-            var container = InventoryManager.Instance()->GetInventoryContainer(InventoryType.EquippedItems);
-            if (container == null)
-                throw new InvalidOperationException("Could not get inventory container");
-
-            var gearItems = Gearsets.GetGearsetItems(container);
-
-            var characterStats = Gearsets.CalculateCharacterStats(gearStats, gearItems, RecipeData.ClassJob.GetPlayerLevel(), RecipeData.ClassJob.CanPlayerUseManipulation());
-            if (characterStats != CharacterStats)
-            {
-                CharacterStats = characterStats;
-                shouldUpdateInput = true;
-            }
-        }
-
-        if (shouldUpdateInput)
-        {
-            SimulationInput = new(CharacterStats, RecipeData.RecipeInfo);
-            // Re-simulate the saved macro with the new stats so the cached score
-            // stays valid when comparing after the next solver run.
-            ReSyncSavedMacroScore(RecipeData.RecipeId, SimulationInput);
-        }
-
-        CurrentActionCount = 0;
-        CurrentActionStates = new();
-        CurrentState = GetCurrentState();
-        PlayedActions.Clear();
-        CraftAutoSaved = false;
+        var gearItems = Gearsets.GetGearsetItems(container);
+        return Gearsets.CalculateCharacterStats(gearStats, gearItems, recipeData.ClassJob.GetPlayerLevel(), recipeData.ClassJob.CanPlayerUseManipulation());
     }
 
     private void OnUseAction(ActionType action)
@@ -581,74 +524,11 @@ public sealed unsafe class SynthHelper : Window, IDisposable
         if (Addon->AtkUnitBase.WindowNode == null)
             return;
 
-        (_, CurrentState) = new SimNoRandom().Execute(GetCurrentState(), action);
-        CurrentActionCount = CurrentState.ActionCount;
-        CurrentActionStates = CurrentState.ActionStates;
-        PlayedActions.Add(action);
+        Session.RegisterActionUsed(action, GetCurrentState());
     }
 
     private void RefreshCurrentState() =>
-        CurrentState = GetCurrentState();
-
-    private void TryAutoSaveMacro()
-    {
-        if (CraftAutoSaved)
-            return;
-        if (!_plugin.Configuration.AutoSaveCraftMacro)
-            return;
-        if (PlayedActions.Count == 0)
-            return;
-        if (SimulationInput == null || RecipeData == null)
-            return;
-
-        // Only save on successful completion (progress reached max)
-        if (CurrentState.Progress < SimulationInput.Recipe.MaxProgress)
-            return;
-
-        CraftAutoSaved = true;
-
-        var newScore = SimulationInput.Recipe.MaxQuality > 0
-            ? (float)CurrentState.Quality / SimulationInput.Recipe.MaxQuality
-            : 1f;
-
-        var recipeId = RecipeData.RecipeId;
-        var itemName = RecipeData.Recipe.ItemResult.ValueNullable?.Name.ExtractText() ?? $"Recipe {recipeId}";
-        var actions = PlayedActions.ToArray();
-
-        var existing = _plugin.MacroRepository.Macros.FirstOrDefault(m => m.RecipeId == recipeId);
-
-        if (existing == null)
-        {
-            var macro = new Macro
-            {
-                Name = itemName,
-                RecipeId = recipeId,
-                SavedScore = newScore,
-            };
-            macro.Actions = actions;
-            _plugin.MacroRepository.Add(macro);
-            Plugin.Plugin.DisplayNotification(new()
-            {
-                Content = $"Macro saved for \"{itemName}\".",
-                MinimizedText = "Craft macro saved",
-                Title = "Craftimizer",
-                Type = Dalamud.Interface.ImGuiNotification.NotificationType.Success
-            });
-        }
-        else if (newScore > existing.SavedScore + 0.001f)
-        {
-            existing.SavedScore = newScore;
-            existing.Actions = actions;
-            _plugin.MacroRepository.Update(existing);
-            Plugin.Plugin.DisplayNotification(new()
-            {
-                Content = $"Better result found! Macro updated for \"{itemName}\" ({existing.SavedScore * 100:F0}% → {newScore * 100:F0}%).",
-                MinimizedText = "Craft macro updated",
-                Title = "Craftimizer",
-                Type = Dalamud.Interface.ImGuiNotification.NotificationType.Success
-            });
-        }
-    }
+        Session.SetCurrentState(GetCurrentState(), ShouldCalculate);
 
     private SimulationState GetCurrentState()
     {
@@ -671,9 +551,9 @@ public sealed unsafe class SynthHelper : Window, IDisposable
             return false;
         }
 
-        return new(SimulationInput!)
+        return new(Session.SimulationInput!)
         {
-            ActionCount = CurrentActionCount,
+            ActionCount = Session.CurrentActionCount,
             StepCount = (int)values.StepCount - 1,
             Progress = (int)values.Progress,
             Quality = (int)values.Quality,
@@ -695,70 +575,8 @@ public sealed unsafe class SynthHelper : Window, IDisposable
                 TrainedPerfection = HasEffect((ushort)EffectType.TrainedPerfection.StatusId()),
                 HeartAndSoul = HasEffect((ushort)EffectType.HeartAndSoul.StatusId()),
             },
-            ActionStates = CurrentActionStates
+            ActionStates = Session.CurrentActionStates
         };
-    }
-
-    private void OnStateUpdated()
-    {
-        if (!ShouldOpen || IsCollapsed)
-        {
-            IsRecalculateQueued = true;
-            return;
-        }
-
-        IsRecalculateQueued = false;
-        Macro.Clear();
-        Macro.InitialState = CurrentState;
-        CalculateBestMacro();
-    }
-
-    private void CalculateBestMacro()
-    {
-        SolverTask?.Cancel();
-        Macro.ClearQueue();
-        Macro.Clear();
-
-        if (_plugin.Configuration.ConditionRandomness)
-        {
-            _plugin.Configuration.ConditionRandomness = false;
-            // Defer disk write; the setting will persist via normal save paths.
-            Macro.RecalculateState();
-        }
-
-        SolverComparisonPending = true;
-        var state = CurrentState;
-        SolverTask = new(token => CalculateBestMacroTask(state, token, Gearsets.HasDelineations()));
-        SolverTask.Start();
-    }
-
-    private int CalculateBestMacroTask(SimulationState state, CancellationToken token, bool hasDelineations)
-    {
-        var config = _plugin.Configuration.SynthHelperSolverConfig;
-        var canUseDelineations = !_plugin.Configuration.CheckDelineations || hasDelineations;
-        if (!canUseDelineations)
-            config = config.FilterSpecialistActions();
-
-        token.ThrowIfCancellationRequested();
-
-        var solver = new Solver.Solver(config, state) { Token = token };
-        solver.OnLog += Log.Debug;
-        solver.OnWarn += t => Plugin.Plugin.DisplaySolverWarning(t);
-        solver.OnNewAction += EnqueueAction;
-        SolverObject = solver;
-        solver.Start();
-        _ = solver.GetTask().GetAwaiter().GetResult();
-
-        token.ThrowIfCancellationRequested();
-
-        return 0;
-    }
-
-    private void EnqueueAction(ActionType action)
-    {
-        var newSize = Macro.Enqueue(action, _plugin.Configuration.SynthHelperMaxDisplayCount);
-        if (newSize >= _plugin.Configuration.SynthHelperStepCount || newSize >= _plugin.Configuration.SynthHelperMaxDisplayCount)
-            SolverTask?.Cancel();
     }
 
     private Sim CreateSim(in SimulationState state) =>
@@ -770,10 +588,10 @@ public sealed unsafe class SynthHelper : Window, IDisposable
     /// </summary>
     private void DrawMacroExecutionProgress()
     {
-        var total = Macro.Count;
+        var total = Session.Macro.Count;
         if (total == 0) return;
 
-        var current = Math.Clamp(CurrentActionCount, 0, total);
+        var current = Math.Clamp(Session.CurrentActionCount, 0, total);
         var fraction = (float)current / total;
 
         var config = _plugin.Configuration.MacroCopy;
@@ -792,72 +610,11 @@ public sealed unsafe class SynthHelper : Window, IDisposable
         ImGui.ProgressBar(fraction, new(-1, ImGui.GetFrameHeight()), overlay);
     }
 
-    /// <summary>
-    /// After the solver finishes, re-simulates the saved macro with the current
-    /// stats and uses it as the suggestion if it scores better than what the
-    /// solver produced. Prevents the helper from ever suggesting something worse
-    /// than what the user already has saved.
-    /// </summary>
-    private void TryUseBetterSavedMacro()
-    {
-        if (RecipeData == null || SimulationInput == null) return;
-
-        var existing = _plugin.MacroRepository.Macros.FirstOrDefault(m => m.RecipeId == RecipeData.RecipeId);
-        if (existing == null || existing.Actions.Count == 0) return;
-
-        var solverScore = CalculateMacroScore(Macro.State);
-        var sim = new SimNoRandom();
-        var (_, savedFinalState, _) = sim.ExecuteMultiple(Macro.InitialState, existing.Actions);
-        var savedScore = CalculateMacroScore(savedFinalState);
-
-        if (savedScore > solverScore + 0.001f)
-        {
-            Macro.Clear();
-            Macro.ClearQueue();
-            foreach (var action in existing.Actions)
-                Macro.Enqueue(action, _plugin.Configuration.SynthHelperMaxDisplayCount);
-            Macro.FlushQueue();
-        }
-    }
-
-    /// <summary>
-    /// Re-simulates the saved macro for <paramref name="recipeId"/> with the
-    /// provided <paramref name="input"/> and updates its <c>SavedScore</c> so the
-    /// cached value reflects the actual result achievable with the current gear.
-    /// </summary>
-    private void ReSyncSavedMacroScore(ushort recipeId, SimulationInput input)
-    {
-        var existing = _plugin.MacroRepository.Macros.FirstOrDefault(m => m.RecipeId == recipeId);
-        if (existing == null || existing.Actions.Count == 0) return;
-
-        var sim = new SimNoRandom();
-        var (_, finalState, _) = sim.ExecuteMultiple(new SimulationState(input), existing.Actions);
-        var newScore = input.Recipe.MaxQuality > 0
-            ? (float)finalState.Quality / input.Recipe.MaxQuality
-            : (finalState.Progress >= input.Recipe.MaxProgress ? 1f : 0f);
-
-        if (MathF.Abs(newScore - existing.SavedScore) > 0.001f)
-        {
-            existing.SavedScore = newScore;
-            _plugin.MacroRepository.Update(existing);
-        }
-    }
-
-    private float CalculateMacroScore(in SimulationState state)
-    {
-        if (SimulationInput == null) return 0f;
-        if (state.Progress < SimulationInput.Recipe.MaxProgress) return 0f;
-        return SimulationInput.Recipe.MaxQuality > 0
-            ? (float)state.Quality / SimulationInput.Recipe.MaxQuality
-            : 1f;
-    }
-
     public void Dispose()
     {
         _plugin.Hooks.OnActionUsed -= OnUseAction;
-
+        Session.Dispose();
         _plugin.WindowSystem.RemoveWindow(this);
-
         AxisFont.Dispose();
     }
 }
