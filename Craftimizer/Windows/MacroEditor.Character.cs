@@ -34,10 +34,8 @@ public sealed partial class MacroEditor
                 textClassSize.X);
         ImGui.AlignTextToFramePadding();
 
-        var uv0 = new Vector2(6, 3);
-        var uv1 = uv0 + new Vector2(44);
-        uv0 /= new Vector2(56);
-        uv1 /= new Vector2(56);
+        var uv0 = UIConstants.ItemIconUv0;
+        var uv1 = UIConstants.ItemIconUv1;
 
         ImGui.Image(_plugin.IconManager.GetIconCached(RecipeData.ClassJob.GetIconId()).Handle, new Vector2(imageSize), uv0, uv1);
         ImGui.SameLine(0, 5);
@@ -103,7 +101,7 @@ public sealed partial class MacroEditor
                     }
                 }
 
-                var disabledTint = new Vector4(0.5f, 0.5f, 0.5f, 0.75f);
+                var disabledTint = Colors.Disabled;
                 var imageButtonPadding = (int)(ImGui.GetStyle().FramePadding.Y / 2f);
                 var imageButtonSize = imageSize - imageButtonPadding * 2;
                 {

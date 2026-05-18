@@ -1,5 +1,7 @@
 namespace Craftimizer.Utils;
 
+using System.Numerics;
+
 /// <summary>
 /// Centralised numeric constants for UI layout, stat clamping, and crafting
 /// rules that previously existed as inline magic numbers scattered across
@@ -32,4 +34,11 @@ internal static class UIConstants
     public const ushort StatusIdMedicated         = 49;
     public const ushort StatusIdFCCraftsmanship   = 356;
     public const ushort StatusIdFCControl         = 357;
+
+    // ── Job icon UV (48×48 sprite within 56×56 atlas, 3px top / 6px left pad) ─
+    public static readonly Vector2 ItemIconUv0 = new Vector2(6, 3) / 56f;
+    public static readonly Vector2 ItemIconUv1 = new Vector2(50, 47) / 56f;
+
+    // ── Settings / About page ──────────────────────────────────────────────────
+    public const float PluginIconSize = 128f;
 }

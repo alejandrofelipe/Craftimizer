@@ -544,10 +544,8 @@ public sealed unsafe class RecipeNote : Window, IDisposable
                 );
             ImGui.AlignTextToFramePadding();
 
-            var uv0 = new Vector2(6, 3);
-            var uv1 = uv0 + new Vector2(44);
-            uv0 /= new Vector2(56);
-            uv1 /= new Vector2(56);
+            var uv0 = UIConstants.ItemIconUv0;
+            var uv1 = UIConstants.ItemIconUv1;
 
             ImGui.Image(_plugin.IconManager.GetIconCached(RecipeData.ClassJob.GetIconId()).Handle, new Vector2(imageSize), uv0, uv1);
             ImGui.SameLine(0, 5);
@@ -1058,12 +1056,12 @@ public sealed unsafe class RecipeNote : Window, IDisposable
             ImGui.TableNextColumn();
             ImGui.TextUnformatted("Current");
             ImGui.TableNextColumn();
-            ImGui.TextColored(new Vector4(0, 1, 0, 1), $"{current}");
+            ImGui.TextColored(Colors.Good, $"{current}");
 
             ImGui.TableNextColumn();
             ImGui.TextUnformatted("Required");
             ImGui.TableNextColumn();
-            ImGui.TextColored(new Vector4(1, 0, 0, 1), $"{required}");
+            ImGui.TextColored(Colors.Bad, $"{required}");
 
             ImGui.TableNextColumn();
             ImGui.TextUnformatted("You need");

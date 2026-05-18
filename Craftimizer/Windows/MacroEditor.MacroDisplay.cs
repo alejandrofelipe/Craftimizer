@@ -215,7 +215,7 @@ public sealed partial class MacroEditor
                     Vector2 v1 = ImGui.GetItemRectMin(), v2 = ImGui.GetItemRectMax();
                     ImGui.PushClipRect(v1, v2, true);
                     (v1.X, v2.X) = (v2.X, v1.X);
-                    ImGui.GetWindowDrawList().AddLine(v1, v2, ImGui.GetColorU32(new Vector4(1, 0, 0, ImGui.GetStyle().DisabledAlpha / 2)), 5 * ImGuiHelpers.GlobalScale);
+                    ImGui.GetWindowDrawList().AddLine(v1, v2, ImGui.GetColorU32(Colors.Bad with { W = ImGui.GetStyle().DisabledAlpha / 2 }), 5 * ImGuiHelpers.GlobalScale);
                     ImGui.PopClipRect();
                 }
                 if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))

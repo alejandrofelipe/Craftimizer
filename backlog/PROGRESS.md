@@ -4,7 +4,7 @@
 > Mude `[ ]` para `[x]`, registre o commit hash e a data na coluna "Feito em".
 > Não acumule múltiplos itens para atualizar de uma vez — marque cada um ao terminar.
 
-Última revisão: 2026-05-18 → 2026-05-19 (gaps implementados — `9fa85fd`)
+Última revisão: 2026-05-18 → 2026-05-19 (gaps implementados — `9fa85fd`) → 2026-05-18 (P4b Fases 1–4 — `99e6ae6`…`ca453ed`)
 
 ---
 
@@ -17,7 +17,7 @@
 | P3a — Redundâncias visuais Fase 1 + 2 | ✅ Completo |
 | P3b — Reorganização DDD Fase 0 + 5 | ✅ Completo |
 | P4a — Novos componentes visuais | ✅ Completo |
-| P4b — Reorganização DDD Fases 1→4 | ⬜ Não iniciado |
+| P4b — Reorganização DDD Fases 1→4 | ✅ Completo |
 
 ---
 
@@ -96,11 +96,11 @@ public MacroList(IPluginLog log, Configuration config, ...) { ... }
 
 | Tarefa | Status | Feito em |
 |---|---|---|
-| Mapear todos os usos de `Service.*` por arquivo | [ ] | — |
-| Atualizar `Plugin.cs` para injetar dependências explicitamente | [ ] | — |
-| Atualizar construtores de todas as janelas (`MacroEditor`, `MacroList`, `SynthHelper`, `RecipeNote`, `Settings`) | [ ] | — |
-| Atualizar `Utils/` (Hooks, DynamicBars, SimulatorUtils, etc.) que acessam `Service.*` | [ ] | — |
-| Deletar `Service.cs` | [ ] | — |
+| Mapear todos os usos de `Service.*` por arquivo | [x] | 2026-05-18 `99e6ae6` |
+| Atualizar `Plugin.cs` para injetar dependências explicitamente | [x] | 2026-05-18 `99e6ae6` |
+| Atualizar construtores de todas as janelas (`MacroEditor`, `MacroList`, `SynthHelper`, `RecipeNote`, `Settings`) | [x] | 2026-05-18 `99e6ae6` |
+| Atualizar `Utils/` (Hooks, DynamicBars, SimulatorUtils, etc.) que acessam `Service.*` | [x] | 2026-05-18 `99e6ae6` |
+| Deletar `Service.cs` | [x] | 2026-05-18 `99e6ae6` |
 
 ---
 
@@ -122,11 +122,11 @@ public sealed class Macro
 
 | Tarefa | Status | Feito em |
 |---|---|---|
-| Remover `OnMacroChanged` de `Macro` | [ ] | — |
-| Remover `JsonIgnore` / `JsonInclude` / `StoredActionTypeConverter` de `Macro` | [ ] | — |
-| Mover lógica de conversão JSON para `Infrastructure/Config/Configuration.cs` | [ ] | — |
-| Ajustar `MacroRepository` para não depender de `OnMacroChanged` | [ ] | — |
-| Garantir que todos os callers de `OnMacroChanged` usem o novo mecanismo | [ ] | — |
+| Remover `OnMacroChanged` de `Macro` | [x] | 2026-05-18 `d7d7bbe` |
+| Remover `JsonIgnore` / `JsonInclude` / `StoredActionTypeConverter` de `Macro` | [x] | 2026-05-18 `d7d7bbe` |
+| Mover lógica de conversão JSON para `Infrastructure/Config/Configuration.cs` | [x] | 2026-05-18 `d7d7bbe` |
+| Ajustar `MacroRepository` para não depender de `OnMacroChanged` | [x] | 2026-05-18 `d7d7bbe` |
+| Garantir que todos os callers de `OnMacroChanged` usem o novo mecanismo | [x] | 2026-05-18 `d7d7bbe` |
 
 > **Pré-requisito:** Fase 1 concluída (para que os callers já não usem `Service.Configuration` diretamente).
 
@@ -150,10 +150,10 @@ public interface IMacroStore
 
 | Tarefa | Status | Feito em |
 |---|---|---|
-| Criar `IMacroStore.cs` | [ ] | — |
-| `MacroRepository` implementa `IMacroStore` | [ ] | — |
-| `Configuration` deixa de expor `Macros` diretamente para as janelas | [ ] | — |
-| Janelas usam `IMacroStore` injetado (via Fase 1) | [ ] | — |
+| Criar `IMacroStore.cs` | [x] | 2026-05-18 `9d71997` |
+| `MacroRepository` implementa `IMacroStore` | [x] | 2026-05-18 `9d71997` |
+| `Configuration` deixa de expor `Macros` diretamente para as janelas | [x] | 2026-05-18 `9d71997` |
+| Janelas usam `IMacroStore` injetado (via Fase 1) | [x] | 2026-05-18 `9d71997` |
 
 > **Pré-requisito:** Fase 2 concluída.
 
@@ -183,9 +183,9 @@ public sealed class CraftingSession : IDisposable
 
 | Tarefa | Status | Feito em |
 |---|---|---|
-| Identificar e separar lógica de sessão vs. lógica de Draw em `SynthHelper.cs` | [ ] | — |
-| Criar `CraftingSession.cs` com estado + solver task management | [ ] | — |
-| `SynthHelper.cs` consome `CraftingSession` via construtor | [ ] | — |
+| Identificar e separar lógica de sessão vs. lógica de Draw em `SynthHelper.cs` | [x] | 2026-05-18 `ca453ed` |
+| Criar `CraftingSession.cs` com estado + solver task management | [x] | 2026-05-18 `ca453ed` |
+| `SynthHelper.cs` consome `CraftingSession` via construtor | [x] | 2026-05-18 `ca453ed` |
 | Verificar que o comportamento é idêntico (testes + smoke test em jogo) | [ ] | — |
 
 > **Pré-requisito:** Fase 3 concluída.

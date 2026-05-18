@@ -1,6 +1,7 @@
 using Craftimizer.Simulator;
 using Craftimizer.Simulator.Actions;
 using Craftimizer.Solver;
+using Craftimizer.Utils;
 using Dalamud.Interface;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.ManagedFontAtlas;
@@ -1107,7 +1108,7 @@ public sealed class Settings : Window, IDisposable
 
         var plugin = _plugin;
         var icon = plugin.Icon;
-        var iconDim = new Vector2(128) * ImGuiHelpers.GlobalScale;
+        var iconDim = new Vector2(UIConstants.PluginIconSize) * ImGuiHelpers.GlobalScale;
 
         using (var table = ImRaii.Table("settingsAboutTable", 2))
         {
@@ -1137,7 +1138,7 @@ public sealed class Settings : Window, IDisposable
                 ImGui.SameLine(0, 0);
                 ImGui.TextUnformatted(")");
 
-                using (ImRaii.PushColor(ImGuiCol.Text, new Vector4(0.07f, 0.76f, 1.00f, 1f)))
+                using (ImRaii.PushColor(ImGuiCol.Text, Colors.Link))
                 {
                     ImGuiUtils.AlignCentered(ImGui.CalcTextSize($"Support me on Ko-fi!").X);
                     ImGui.TextUnformatted($"Support me on ");

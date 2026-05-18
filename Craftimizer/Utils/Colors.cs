@@ -35,6 +35,16 @@ public static class Colors
     // ── Badge tints ───────────────────────────────────────────────────────────
     public static readonly Vector4 SpecialistGold = new(0.99f, 0.97f, 0.62f, 1f);
 
+    // ── Semantic UI states ────────────────────────────────────────────────────
+    /// <summary>Tint applied to disabled toggle-image buttons.</summary>
+    public static readonly Vector4 Disabled = new(0.5f, 0.5f, 0.5f, 0.75f);
+    /// <summary>Pure green — stat/value is sufficient.</summary>
+    public static readonly Vector4 Good     = new(0f, 1f, 0f, 1f);
+    /// <summary>Pure red — stat/value is insufficient or action is invalid.</summary>
+    public static readonly Vector4 Bad      = new(1f, 0f, 0f, 1f);
+    /// <summary>Accent blue used for hyperlinks / support text.</summary>
+    public static readonly Vector4 Link     = new(0.07f, 0.76f, 1.00f, 1f);
+
     private static Vector4 SolverProgressBg => ImGui.ColorConvertU32ToFloat4(ImGui.GetColorU32(ImGuiCol.TableBorderLight));
     private static Vector4 SolverProgressFgBland => ImGuiColors.DalamudWhite2;
 

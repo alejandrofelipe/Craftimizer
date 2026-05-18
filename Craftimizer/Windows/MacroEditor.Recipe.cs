@@ -102,10 +102,8 @@ public sealed partial class MacroEditor
                         textLevelSize.X,
                         ImGui.GetContentRegionAvail().X);
 
-                    var uv0 = new Vector2(6, 3);
-                    var uv1 = uv0 + new Vector2(44);
-                    uv0 /= new Vector2(56);
-                    uv1 /= new Vector2(56);
+                    var uv0 = UIConstants.ItemIconUv0;
+                    var uv1 = UIConstants.ItemIconUv1;
 
                     ImGui.SetCursorPosY(ImGui.GetCursorPosY() + ImGui.GetStyle().FramePadding.Y / 2);
                     ImGui.Image(_plugin.IconManager.GetIconCached(classJob.GetIconId()).Handle, new Vector2(imageSize), uv0, uv1);
