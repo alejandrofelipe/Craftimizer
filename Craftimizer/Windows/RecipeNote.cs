@@ -437,7 +437,7 @@ public sealed unsafe class RecipeNote : Window, IDisposable
                 State = macroTaskResult?.Item2,
             };
             if (macroTaskResult is { } macro && macro.Item1 is { } savedMacro)
-                state.MacroEditorSetter = a => { savedMacro.ActionEnumerable = a; _plugin.Configuration.Save(); };
+                state.MacroEditorSetter = a => { savedMacro.ActionEnumerable = a; _plugin.Configuration.UpdateMacro(savedMacro); };
             DrawMacro(in state, panelWidth);
         }
 

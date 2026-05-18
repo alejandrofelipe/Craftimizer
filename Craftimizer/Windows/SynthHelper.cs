@@ -639,7 +639,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
         {
             existing.SavedScore = newScore;
             existing.Actions = actions;
-            _plugin.Configuration.Save();
+            _plugin.MacroRepository.Update(existing);
             Plugin.Plugin.DisplayNotification(new()
             {
                 Content = $"Better result found! Macro updated for \"{itemName}\" ({existing.SavedScore * 100:F0}% → {newScore * 100:F0}%).",
@@ -837,7 +837,10 @@ public sealed unsafe class SynthHelper : Window, IDisposable
             : (finalState.Progress >= input.Recipe.MaxProgress ? 1f : 0f);
 
         if (MathF.Abs(newScore - existing.SavedScore) > 0.001f)
-            existing.SavedScore = newScore; // fires OnMacroChanged → SQLite save
+        {
+            existing.SavedScore = newScore;
+            _plugin.MacroRepository.Update(existing);
+        }
     }
 
     private float CalculateMacroScore(in SimulationState state)

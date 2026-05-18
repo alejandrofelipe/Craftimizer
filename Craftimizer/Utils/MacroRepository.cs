@@ -20,6 +20,9 @@ public sealed class MacroRepository : IDisposable
 
     public IReadOnlyList<Macro> Macros => _macros;
 
+    /// <summary>Fired after <see cref="Update"/> persists a macro mutation.</summary>
+    public event Action<Macro>? MacroUpdated;
+
     public MacroRepository(IDalamudPluginInterface pluginInterface)
     {
         var dir = pluginInterface.GetPluginConfigDirectory();
@@ -29,7 +32,6 @@ public sealed class MacroRepository : IDisposable
         _db.Open();
         EnsureSchema();
         _macros.AddRange(LoadAll());
-        Macro.OnMacroChanged += OnMacroChanged;
     }
 
     // ── Schema ────────────────────────────────────────────────────────────────
@@ -88,11 +90,10 @@ public sealed class MacroRepository : IDisposable
             var macro = new Macro
             {
                 Id = (int)id,
-                // Set backing fields via internal setter to avoid firing OnMacroChanged
-                // while the macro is not yet tracked by this repository.
+                Name = mr.GetString(1),
+                RecipeId = mr.IsDBNull(2) ? null : (ushort)mr.GetInt64(2),
+                SavedScore = (float)mr.GetDouble(3),
             };
-            // Use direct field assignment to bypass OnMacroChanged during load.
-            macro.SetFieldsDirect(mr.GetString(1), mr.IsDBNull(2) ? null : (ushort)mr.GetInt64(2), (float)mr.GetDouble(3));
             if (actionsByMacro.TryGetValue(id, out var actions))
                 macro.actions = [.. actions];
             yield return macro;
@@ -169,14 +170,15 @@ public sealed class MacroRepository : IDisposable
         catch { tx.Rollback(); throw; }
     }
 
-    // ── Change tracking via Macro.OnMacroChanged ──────────────────────────────
+    // ── Change tracking ────────────────────────────────────────────────────────
 
-    private void OnMacroChanged(Macro macro)
+    /// <summary>Persists a macro mutation to the database and fires <see cref="MacroUpdated"/>.</summary>
+    public void Update(Macro macro)
     {
-        // Ignore macros not managed by this repository (e.g. during object initialization).
         if (!_macros.Contains(macro))
             return;
         UpdateMacro(macro);
+        MacroUpdated?.Invoke(macro);
     }
 
     private void UpdateMacro(Macro macro)
@@ -263,7 +265,6 @@ public sealed class MacroRepository : IDisposable
 
     public void Dispose()
     {
-        Macro.OnMacroChanged -= OnMacroChanged;
         _db.Close();
         _db.Dispose();
     }

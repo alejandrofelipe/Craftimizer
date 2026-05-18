@@ -99,28 +99,16 @@ public class StoredActionTypeConverter : JsonConverter<ActionType[]>
 
 public class Macro
 {
-    public static event Action<Macro>? OnMacroChanged;
-
     /// <summary>SQLite row ID. 0 when not yet persisted.</summary>
     [JsonIgnore]
     internal int Id { get; set; }
 
-    private string _name = string.Empty;
-    public string Name
-    {
-        get => _name;
-        set { _name = value; OnMacroChanged?.Invoke(this); }
-    }
+    public string Name { get; set; } = string.Empty;
 
     public ushort? RecipeId { get; set; }
 
-    private float _savedScore;
     /// <summary>Score from 0 to 1 representing quality/collectability achieved. Used to determine if a newer craft result is better.</summary>
-    public float SavedScore
-    {
-        get => _savedScore;
-        set { _savedScore = value; OnMacroChanged?.Invoke(this); }
-    }
+    public float SavedScore { get; set; }
 
     [JsonInclude] [JsonPropertyName("Actions")]
     internal ActionType[] actions { get; set; } = [];
@@ -133,22 +121,7 @@ public class Macro
     [JsonIgnore]
     public IEnumerable<ActionType> ActionEnumerable
     {
-        set
-        {
-            actions = [.. value];
-            OnMacroChanged?.Invoke(this);
-        }
-    }
-
-    /// <summary>
-    /// Sets backing fields directly, bypassing <see cref="OnMacroChanged"/>.
-    /// Used by <see cref="Craftimizer.Utils.MacroRepository"/> when loading from the database.
-    /// </summary>
-    internal void SetFieldsDirect(string name, ushort? recipeId, float savedScore)
-    {
-        _name = name;
-        RecipeId = recipeId;
-        _savedScore = savedScore;
+        set => actions = [.. value];
     }
 }
 
@@ -278,6 +251,8 @@ public partial class Configuration
             Converters = { new StoredActionTypeConverter() }
         };
     }
+
+    public void UpdateMacro(Macro macro) => _macroRepository!.Update(macro);
 
     public void Save()
     {

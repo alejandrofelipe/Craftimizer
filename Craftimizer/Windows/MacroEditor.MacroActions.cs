@@ -127,7 +127,7 @@ public sealed partial class MacroEditor
                     MacroSetter = actions =>
                     {
                         newMacro.ActionEnumerable = actions;
-                        _plugin.Configuration.Save();
+                        _plugin.Configuration.UpdateMacro(newMacro);
                     };
                     ImGui.CloseCurrentPopup();
                 }

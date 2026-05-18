@@ -32,7 +32,7 @@ public sealed class MacroList : Window, IDisposable
         _plugin = plugin;
         RefreshSearch();
 
-        Macro.OnMacroChanged += OnMacroChanged;
+        _plugin.MacroRepository.MacroUpdated += OnMacroChanged;
         Configuration.OnMacroListChanged += OnMacroListChanged;
 
         CollapsedCondition = ImGuiCond.Appearing;
@@ -299,7 +299,7 @@ public sealed class MacroList : Window, IDisposable
                 if (!string.IsNullOrWhiteSpace(popupMacroName))
                 {
                     popupMacro!.Name = popupMacroName;
-                    _plugin.Configuration.Save();
+                    _plugin.Configuration.UpdateMacro(popupMacro!);
                     ImGui.CloseCurrentPopup();
                 }
             }
@@ -332,7 +332,7 @@ public sealed class MacroList : Window, IDisposable
     private void OpenEditor(Macro? macro)
     {
         var stats = _plugin.GetDefaultStats();
-        _plugin.OpenMacroEditor(stats.Character, stats.Recipe, stats.Buffs, null, macro?.Actions ?? Enumerable.Empty<ActionType>(), macro != null ? (actions => { macro.ActionEnumerable = actions; _plugin.Configuration.Save(); }) : null);
+        _plugin.OpenMacroEditor(stats.Character, stats.Recipe, stats.Buffs, null, macro?.Actions ?? Enumerable.Empty<ActionType>(), macro != null ? (actions => { macro.ActionEnumerable = actions; _plugin.Configuration.UpdateMacro(macro); }) : null);
     }
 
     private void OnMacroChanged(Macro macro)
@@ -361,7 +361,7 @@ public sealed class MacroList : Window, IDisposable
 
     public void Dispose()
     {
-        Macro.OnMacroChanged -= OnMacroChanged;
+        _plugin.MacroRepository.MacroUpdated -= OnMacroChanged;
         Configuration.OnMacroListChanged -= OnMacroListChanged;
 
         _plugin.WindowSystem.RemoveWindow(this);
