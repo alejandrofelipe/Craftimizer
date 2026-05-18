@@ -38,14 +38,7 @@ public sealed partial class MacroEditor
                         var size = ImGui.GetFrameHeight() + spacing + ImGui.CalcTextSize(condition.Name()).X;
 
                         ImGuiUtils.AlignCentered(size, availSize);
-                        ImGui.GetWindowDrawList().AddCircleFilled(
-                            ImGui.GetCursorScreenPos() + new Vector2(ImGui.GetFrameHeight() / 2),
-                            ImGui.GetFrameHeight() / 2,
-                            ImGui.ColorConvertFloat4ToU32(new Vector4(.35f, .35f, .35f, 0) + condition.GetColor(DateTime.UtcNow.TimeOfDay)));
-                        ImGui.Dummy(new(ImGui.GetFrameHeight()));
-                        ImGui.SameLine(0, spacing);
-                        ImGui.AlignTextToFramePadding();
-                        ImGui.TextUnformatted(condition.Name());
+                        ImGuiUtils.DrawConditionIndicator(condition, spacing);
                     }
                     if (ImGui.IsItemHovered())
                         ImGuiUtils.Tooltip(condition.Description(CharacterStats.HasSplendorousBuff));

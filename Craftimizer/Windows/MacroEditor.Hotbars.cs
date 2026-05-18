@@ -41,6 +41,22 @@ public sealed partial class MacroEditor
                 {
                     var actionBase = actions[i].Base();
                     var canUse = actionBase.CanUse(sim);
+
+                    // Category tint: draw a subtle colored background behind the action icon
+                    var tintColor = category switch
+                    {
+                        ActionCategory.Synthesis or ActionCategory.FirstTurn => Colors.ActionSynth,
+                        ActionCategory.Quality => Colors.ActionTouch,
+                        ActionCategory.Buffs => Colors.ActionBuff,
+                        _ => Colors.ActionSpecial,
+                    };
+                    var slotPos = ImGui.GetCursorScreenPos();
+                    ImGui.GetWindowDrawList().AddRectFilled(
+                        slotPos,
+                        slotPos + new Vector2(imageSize),
+                        ImGui.GetColorU32(new Vector4(tintColor.X, tintColor.Y, tintColor.Z, 0.10f)),
+                        ImGui.GetStyle().FrameRounding);
+
                     if (ImGui.ImageButton(actions[i].GetIcon(RecipeData!.ClassJob).Handle, new(imageSize), default, Vector2.One, 0, default, !canUse ? new(1, 1, 1, ImGui.GetStyle().DisabledAlpha) : Vector4.One) && !SolverRunning)
                         AddStep(actions[i]);
                     if (!canUse &&

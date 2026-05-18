@@ -309,6 +309,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
         if (SolverRunning && SolverObject is { } solver)
         {
             ImGuiHelpers.ScaledDummy(5);
+            ImGuiUtils.DrawStateChip(ImGuiUtils.SolverState.Solving);
             DynamicBars.DrawProgressBar(solver);
         }
     }

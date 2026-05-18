@@ -288,6 +288,110 @@ internal static class ImGuiUtils
         }
     }
 
+    // ── State Chip ─────────────────────────────────────────────────────────
+    public enum SolverState { Solving, Complete, Suboptimal, Failed }
+
+    /// <summary>
+    /// Renders a small colored dot followed by a label.
+    /// The dot pulses when <paramref name="state"/> is <see cref="SolverState.Solving"/>.
+    /// </summary>
+    public static void DrawStateChip(SolverState state, string? label = null)
+    {
+        var (color, defaultLabel) = state switch
+        {
+            SolverState.Solving    => (Colors.ActionBuff,     "Solving\u2026"),
+            SolverState.Complete   => (Colors.ConditionSturdy, "Complete"),
+            SolverState.Suboptimal => (Colors.ConditionGood,  "Suboptimal"),
+            SolverState.Failed     => (new Vector4(1f, 0.36f, 0.43f, 1f), "Failed"),
+            _ => (Vector4.One, "Unknown")
+        };
+        var text = label ?? defaultLabel;
+
+        var dotRadius = ImGui.GetTextLineHeight() * 0.25f;
+        var spacing   = ImGui.GetStyle().ItemSpacing.X * 0.5f;
+
+        var dotAlpha = state == SolverState.Solving
+            ? MathF.Abs(MathF.Sin((float)(ImGui.GetTime() * MathF.PI / 0.6f))) * 0.6f + 0.4f
+            : 1f;
+
+        using (ImRaii.Group())
+        {
+            var dotCenter = ImGui.GetCursorScreenPos() + new Vector2(dotRadius, ImGui.GetTextLineHeight() * 0.5f);
+            ImGui.GetWindowDrawList().AddCircleFilled(
+                dotCenter, dotRadius,
+                ImGui.GetColorU32(new Vector4(color.X, color.Y, color.Z, color.W * dotAlpha)));
+            ImGui.Dummy(new Vector2(dotRadius * 2, ImGui.GetTextLineHeight()));
+            ImGui.SameLine(0, spacing);
+            using (ImRaii.PushColor(ImGuiCol.Text, color))
+                ImGui.TextUnformatted(text);
+        }
+    }
+
+    // ── Condition Indicator ────────────────────────────────────────────────
+
+    /// <summary>
+    /// Renders an animated colored circle followed by the condition name.
+    /// The circle color matches the in-game condition animation.
+    /// </summary>
+    public static void DrawConditionIndicator(Condition condition, float spacing)
+    {
+        var frameHeight = ImGui.GetFrameHeight();
+        ImGui.GetWindowDrawList().AddCircleFilled(
+            ImGui.GetCursorScreenPos() + new Vector2(frameHeight / 2),
+            frameHeight / 2,
+            ImGui.ColorConvertFloat4ToU32(new Vector4(.35f, .35f, .35f, 0) + condition.GetColor(DateTime.UtcNow.TimeOfDay)));
+        ImGui.Dummy(new(frameHeight));
+        ImGui.SameLine(0, spacing);
+        ImGui.AlignTextToFramePadding();
+        ImGui.TextUnformatted(condition.Name());
+    }
+
+    // ── Solver Progress Bar ────────────────────────────────────────────────
+
+    /// <summary>
+    /// Draws a thin (3 px) progress bar styled for the solver:
+    /// <list type="bullet">
+    /// <item>Pass <see langword="null"/> for an indeterminate shimmer animation.</item>
+    /// <item>Pass a 0..1 float for a determinate fill.</item>
+    /// </list>
+    /// </summary>
+    public static void DrawSolverProgressBar(float? progress, Vector2 size)
+    {
+        var style = ImGui.GetStyle();
+        var pos = ImGui.GetCursorScreenPos();
+        var bbMin = pos;
+        var bbMax = pos + size;
+
+        ImGuiExtras.ItemSize(size, style.FramePadding.Y);
+        if (!ImGuiExtras.ItemAdd(new(bbMin.X, bbMin.Y, bbMax.X, bbMax.Y), 0))
+            return;
+
+        var drawList = ImGui.GetWindowDrawList();
+        var rounding = size.Y / 2f;
+        drawList.AddRectFilled(bbMin, bbMax, ImGui.GetColorU32(ImGuiCol.FrameBg), rounding);
+
+        if (progress is null)
+        {
+            // indeterminate: 35%-wide band sweeping from left to right over 1.5 s
+            const float bandFrac = 0.35f;
+            var t  = (float)(ImGui.GetTime() % 1.5 / 1.5);
+            var x0 = float.Lerp(bbMin.X - size.X * bandFrac, bbMax.X, t);
+            var x1 = x0 + size.X * bandFrac;
+            x0 = Math.Max(x0, bbMin.X);
+            x1 = Math.Min(x1, bbMax.X);
+            if (x1 > x0)
+                drawList.AddRectFilled(new Vector2(x0, bbMin.Y), new Vector2(x1, bbMax.Y),
+                    ImGui.GetColorU32(Colors.ActionBuff), rounding);
+        }
+        else
+        {
+            var frac = Math.Clamp(progress.Value, 0f, 1f);
+            if (frac > 0f)
+                drawList.AddRectFilled(bbMin, new Vector2(bbMin.X + size.X * frac, bbMax.Y),
+                    ImGui.GetColorU32(Colors.ActionBuff), rounding);
+        }
+    }
+
     public static void ProgressBar(float value, Vector2 size)
     {
         var style = ImGui.GetStyle();
