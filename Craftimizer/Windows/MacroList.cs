@@ -208,71 +208,7 @@ public sealed class MacroList : Window, IDisposable
             if (stateNullable is { } state)
             {
                 ImGui.TableNextColumn();
-                if (Service.Configuration.ShowOptimalMacroStat)
-                {
-                    var progressHeight = windowHeight;
-                    if (state.Progress >= state.Input.Recipe.MaxProgress && state.Input.Recipe.MaxQuality > 0)
-                    {
-                        ImGuiUtils.ArcProgress(
-                        (float)state.Quality / state.Input.Recipe.MaxQuality,
-                        progressHeight / 2f,
-                        .5f,
-                        ImGui.GetColorU32(ImGuiCol.TableBorderLight),
-                        ImGui.GetColorU32(Colors.Quality));
-                        if (ImGui.IsItemHovered())
-                            ImGuiUtils.Tooltip($"Quality: {state.Quality} / {state.Input.Recipe.MaxQuality}");
-                    }
-                    else
-                    {
-                        ImGuiUtils.ArcProgress(
-                        (float)state.Progress / state.Input.Recipe.MaxProgress,
-                        progressHeight / 2f,
-                        .5f,
-                        ImGui.GetColorU32(ImGuiCol.TableBorderLight),
-                        ImGui.GetColorU32(Colors.Progress));
-                        if (ImGui.IsItemHovered())
-                            ImGuiUtils.Tooltip($"Progress: {state.Progress} / {state.Input.Recipe.MaxProgress}");
-                    }
-                }
-                else
-                {
-                    ImGuiUtils.ArcProgress(
-                        (float)state.Progress / state.Input.Recipe.MaxProgress,
-                        miniRowHeight / 2f,
-                        .5f,
-                        ImGui.GetColorU32(ImGuiCol.TableBorderLight),
-                        ImGui.GetColorU32(Colors.Progress));
-                    if (ImGui.IsItemHovered())
-                        ImGuiUtils.Tooltip($"Progress: {state.Progress} / {state.Input.Recipe.MaxProgress}");
-
-                    ImGui.SameLine(0, spacing);
-                    ImGuiUtils.ArcProgress(
-                        (float)state.Quality / state.Input.Recipe.MaxQuality,
-                        miniRowHeight / 2f,
-                        .5f,
-                        ImGui.GetColorU32(ImGuiCol.TableBorderLight),
-                        ImGui.GetColorU32(Colors.Quality));
-                    if (ImGui.IsItemHovered())
-                        ImGuiUtils.Tooltip($"Quality: {state.Quality} / {state.Input.Recipe.MaxQuality}");
-
-                    ImGuiUtils.ArcProgress((float)state.Durability / state.Input.Recipe.MaxDurability,
-                        miniRowHeight / 2f,
-                        .5f,
-                        ImGui.GetColorU32(ImGuiCol.TableBorderLight),
-                        ImGui.GetColorU32(Colors.Durability));
-                    if (ImGui.IsItemHovered())
-                        ImGuiUtils.Tooltip($"Remaining Durability: {state.Durability} / {state.Input.Recipe.MaxDurability}");
-
-                    ImGui.SameLine(0, spacing);
-                    ImGuiUtils.ArcProgress(
-                        (float)state.CP / state.Input.Stats.CP,
-                        miniRowHeight / 2f,
-                        .5f,
-                        ImGui.GetColorU32(ImGuiCol.TableBorderLight),
-                        ImGui.GetColorU32(Colors.CP));
-                    if (ImGui.IsItemHovered())
-                        ImGuiUtils.Tooltip($"Remaining CP: {state.CP} / {state.Input.Stats.CP}");
-                }
+                ImGuiUtils.DrawMacroStatArcs(state, windowHeight, Service.Configuration.ShowOptimalMacroStat);
             }
 
             ImGui.TableNextColumn();

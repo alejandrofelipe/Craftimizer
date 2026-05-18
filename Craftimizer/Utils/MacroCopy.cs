@@ -14,7 +14,7 @@ namespace Craftimizer.Utils;
 public static class MacroCopy
 {
     private const ClassJob DefaultJob = ClassJob.Carpenter;
-    private const int MacroSize = 15;
+    public const int MacroSize = 15;
 
     public static void Copy(IReadOnlyList<ActionType> actions)
     {

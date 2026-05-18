@@ -8,12 +8,32 @@ namespace Craftimizer.Utils;
 
 public static class Colors
 {
+    // ── Stat bars ─────────────────────────────────────────────────────────────
     public static readonly Vector4 Progress = new(0.44f, 0.65f, 0.18f, 1f);
     public static readonly Vector4 Quality = new(0.26f, 0.71f, 0.69f, 1f);
     public static readonly Vector4 Durability = new(0.13f, 0.52f, 0.93f, 1f);
     public static readonly Vector4 HQ = new(0.592f, 0.863f, 0.376f, 1f);
     public static readonly Vector4 Collectability = new(0.99f, 0.56f, 0.57f, 1f);
     public static readonly Vector4 CP = new(0.63f, 0.37f, 0.75f, 1f);
+
+    // ── Action category tints ─────────────────────────────────────────────────
+    public static readonly Vector4 ActionSynth   = new(0.20f, 0.90f, 0.63f, 1f);
+    public static readonly Vector4 ActionTouch   = new(0.69f, 0.48f, 1.00f, 1f);
+    public static readonly Vector4 ActionBuff    = new(0.29f, 0.72f, 1.00f, 1f);
+    public static readonly Vector4 ActionSpecial = new(1.00f, 0.72f, 0.29f, 1f);
+
+    // ── Condition colors ──────────────────────────────────────────────────────
+    public static readonly Vector4 ConditionNormal    = new(0.78f, 0.78f, 0.78f, 1f);
+    public static readonly Vector4 ConditionGood      = new(1.00f, 0.72f, 0.29f, 1f);
+    public static readonly Vector4 ConditionExcellent = new(1.00f, 0.42f, 0.54f, 1f);
+    public static readonly Vector4 ConditionPoor      = new(0.54f, 0.60f, 0.73f, 1f);
+    public static readonly Vector4 ConditionPliant    = new(0.29f, 0.72f, 1.00f, 1f);
+    public static readonly Vector4 ConditionMalleable = new(0.69f, 0.48f, 1.00f, 1f);
+    public static readonly Vector4 ConditionSturdy    = new(0.32f, 0.90f, 0.63f, 1f);
+    public static readonly Vector4 ConditionPrimed    = new(1.00f, 0.55f, 0.25f, 1f);
+
+    // ── Badge tints ───────────────────────────────────────────────────────────
+    public static readonly Vector4 SpecialistGold = new(0.99f, 0.97f, 0.62f, 1f);
 
     private static Vector4 SolverProgressBg => ImGui.ColorConvertU32ToFloat4(ImGui.GetColorU32(ImGuiCol.TableBorderLight));
     private static Vector4 SolverProgressFgBland => ImGuiColors.DalamudWhite2;

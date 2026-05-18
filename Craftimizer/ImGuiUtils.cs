@@ -1,3 +1,4 @@
+using Craftimizer.Simulator;
 using Craftimizer.Utils;
 using Dalamud.Interface;
 using Dalamud.Interface.ManagedFontAtlas;
@@ -245,6 +246,46 @@ internal static class ImGuiUtils
         }
 
         Arc(startAngle, endAngle, radius, ratio, backgroundColor, filledColor);
+    }
+
+    public static void DrawMacroStatArcs(in SimulationState state, float windowHeight, bool showOptimalStat)
+    {
+        var spacing = ImGui.GetStyle().ItemSpacing.Y;
+        var miniRowHeight = (windowHeight - spacing) / 2f;
+        var bgColor = ImGui.GetColorU32(ImGuiCol.TableBorderLight);
+
+        if (showOptimalStat)
+        {
+            if (state.Progress >= state.Input.Recipe.MaxProgress && state.Input.Recipe.MaxQuality > 0)
+            {
+                ArcProgress((float)state.Quality / state.Input.Recipe.MaxQuality, windowHeight / 2f, .5f, bgColor, ImGui.GetColorU32(Colors.Quality));
+                if (ImGui.IsItemHovered())
+                    Tooltip($"Quality: {state.Quality} / {state.Input.Recipe.MaxQuality}");
+            }
+            else
+            {
+                ArcProgress((float)state.Progress / state.Input.Recipe.MaxProgress, windowHeight / 2f, .5f, bgColor, ImGui.GetColorU32(Colors.Progress));
+                if (ImGui.IsItemHovered())
+                    Tooltip($"Progress: {state.Progress} / {state.Input.Recipe.MaxProgress}");
+            }
+        }
+        else
+        {
+            ArcProgress((float)state.Progress / state.Input.Recipe.MaxProgress, miniRowHeight / 2f, .5f, bgColor, ImGui.GetColorU32(Colors.Progress));
+            if (ImGui.IsItemHovered())
+                Tooltip($"Progress: {state.Progress} / {state.Input.Recipe.MaxProgress}");
+            ImGui.SameLine(0, spacing);
+            ArcProgress((float)state.Quality / state.Input.Recipe.MaxQuality, miniRowHeight / 2f, .5f, bgColor, ImGui.GetColorU32(Colors.Quality));
+            if (ImGui.IsItemHovered())
+                Tooltip($"Quality: {state.Quality} / {state.Input.Recipe.MaxQuality}");
+            ArcProgress((float)state.Durability / state.Input.Recipe.MaxDurability, miniRowHeight / 2f, .5f, bgColor, ImGui.GetColorU32(Colors.Durability));
+            if (ImGui.IsItemHovered())
+                Tooltip($"Remaining Durability: {state.Durability} / {state.Input.Recipe.MaxDurability}");
+            ImGui.SameLine(0, spacing);
+            ArcProgress((float)state.CP / state.Input.Stats.CP, miniRowHeight / 2f, .5f, bgColor, ImGui.GetColorU32(Colors.CP));
+            if (ImGui.IsItemHovered())
+                Tooltip($"Remaining CP: {state.CP} / {state.Input.Stats.CP}");
+        }
     }
 
     public static void ProgressBar(float value, Vector2 size)

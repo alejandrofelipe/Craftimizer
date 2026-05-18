@@ -68,6 +68,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
 
     private BackgroundTask<int>? SolverTask { get; set; }
     private bool SolverRunning => (!SolverTask?.Completed) ?? false;
+    private bool SolverComparisonPending { get; set; }
     private Solver.Solver? SolverObject { get; set; }
 
     private IFontHandle AxisFont { get; }
@@ -220,6 +221,14 @@ public sealed unsafe class SynthHelper : Window, IDisposable
 
         Macro.FlushQueue();
 
+        // Once the solver finishes, compare its result against the saved macro and
+        // use whichever is better as the displayed suggestion.
+        if (SolverComparisonPending && SolverTask?.Completed != false)
+        {
+            SolverComparisonPending = false;
+            TryUseBetterSavedMacro();
+        }
+
         var isInCraftAction = Service.Condition[ConditionFlag.ExecutingCraftingAction];
         if (!isInCraftAction && wasInCraftAction)
         {
@@ -294,6 +303,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
 
         ImGuiHelpers.ScaledDummy(5);
 
+        DrawMacroExecutionProgress();
         DrawMacroActions();
 
         if (SolverRunning && SolverObject is { } solver)
@@ -544,7 +554,12 @@ public sealed unsafe class SynthHelper : Window, IDisposable
         }
 
         if (shouldUpdateInput)
+        {
             SimulationInput = new(CharacterStats, RecipeData.RecipeInfo);
+            // Re-simulate the saved macro with the new stats so the cached score
+            // stays valid when comparing after the next solver run.
+            ReSyncSavedMacroScore(RecipeData.RecipeId, SimulationInput);
+        }
 
         CurrentActionCount = 0;
         CurrentActionStates = new();
@@ -615,7 +630,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
                 Type = Dalamud.Interface.ImGuiNotification.NotificationType.Success
             });
         }
-        else if (newScore > existing.SavedScore)
+        else if (newScore > existing.SavedScore + 0.001f)
         {
             existing.SavedScore = newScore;
             existing.Actions = actions;
@@ -702,10 +717,11 @@ public sealed unsafe class SynthHelper : Window, IDisposable
         if (Service.Configuration.ConditionRandomness)
         {
             Service.Configuration.ConditionRandomness = false;
-            Service.Configuration.Save();
+            // Defer disk write; the setting will persist via normal save paths.
             Macro.RecalculateState();
         }
 
+        SolverComparisonPending = true;
         var state = CurrentState;
         SolverTask = new(token => CalculateBestMacroTask(state, token, Gearsets.HasDelineations()));
         SolverTask.Start();
@@ -742,6 +758,91 @@ public sealed unsafe class SynthHelper : Window, IDisposable
 
     private static Sim CreateSim(in SimulationState state) =>
         Service.Configuration.ConditionRandomness ? new Sim() { State = state } : new SimNoRandom() { State = state };
+
+    /// <summary>
+    /// Displays a progress bar showing how many actions of the current macro have
+    /// been executed in-game, with slot information when MacroChain is enabled.
+    /// </summary>
+    private void DrawMacroExecutionProgress()
+    {
+        var total = Macro.Count;
+        if (total == 0) return;
+
+        var current = Math.Clamp(CurrentActionCount, 0, total);
+        var fraction = (float)current / total;
+
+        var config = Service.Configuration.MacroCopy;
+        var actionsPerSlot = MacroCopy.MacroSize
+            - (config.UseNextMacro ? 1 : 0)
+            - (config.UseMacroLock ? 1 : 0);
+        actionsPerSlot = Math.Max(1, actionsPerSlot);
+
+        var totalSlots = (int)Math.Ceiling((float)total / actionsPerSlot);
+        var currentSlot = Math.Clamp(current / actionsPerSlot + 1, 1, totalSlots);
+
+        var overlay = totalSlots > 1
+            ? $"Slot {currentSlot}/{totalSlots}  ·  {current}/{total}"
+            : $"{current} / {total}";
+
+        ImGui.ProgressBar(fraction, new(-1, ImGui.GetFrameHeight()), overlay);
+    }
+
+    /// <summary>
+    /// After the solver finishes, re-simulates the saved macro with the current
+    /// stats and uses it as the suggestion if it scores better than what the
+    /// solver produced. Prevents the helper from ever suggesting something worse
+    /// than what the user already has saved.
+    /// </summary>
+    private void TryUseBetterSavedMacro()
+    {
+        if (RecipeData == null || SimulationInput == null) return;
+
+        var existing = Service.Configuration.Macros.FirstOrDefault(m => m.RecipeId == RecipeData.RecipeId);
+        if (existing == null || existing.Actions.Count == 0) return;
+
+        var solverScore = CalculateMacroScore(Macro.State);
+        var sim = new SimNoRandom();
+        var (_, savedFinalState, _) = sim.ExecuteMultiple(Macro.InitialState, existing.Actions);
+        var savedScore = CalculateMacroScore(savedFinalState);
+
+        if (savedScore > solverScore + 0.001f)
+        {
+            Macro.Clear();
+            Macro.ClearQueue();
+            foreach (var action in existing.Actions)
+                Macro.Enqueue(action, Service.Configuration.SynthHelperMaxDisplayCount);
+            Macro.FlushQueue();
+        }
+    }
+
+    /// <summary>
+    /// Re-simulates the saved macro for <paramref name="recipeId"/> with the
+    /// provided <paramref name="input"/> and updates its <c>SavedScore</c> so the
+    /// cached value reflects the actual result achievable with the current gear.
+    /// </summary>
+    private static void ReSyncSavedMacroScore(ushort recipeId, SimulationInput input)
+    {
+        var existing = Service.Configuration.Macros.FirstOrDefault(m => m.RecipeId == recipeId);
+        if (existing == null || existing.Actions.Count == 0) return;
+
+        var sim = new SimNoRandom();
+        var (_, finalState, _) = sim.ExecuteMultiple(new SimulationState(input), existing.Actions);
+        var newScore = input.Recipe.MaxQuality > 0
+            ? (float)finalState.Quality / input.Recipe.MaxQuality
+            : (finalState.Progress >= input.Recipe.MaxProgress ? 1f : 0f);
+
+        if (MathF.Abs(newScore - existing.SavedScore) > 0.001f)
+            existing.SavedScore = newScore; // fires OnMacroChanged → SQLite save
+    }
+
+    private float CalculateMacroScore(in SimulationState state)
+    {
+        if (SimulationInput == null) return 0f;
+        if (state.Progress < SimulationInput.Recipe.MaxProgress) return 0f;
+        return SimulationInput.Recipe.MaxQuality > 0
+            ? (float)state.Quality / SimulationInput.Recipe.MaxQuality
+            : 1f;
+    }
 
     public void Dispose()
     {

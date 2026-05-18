@@ -32,14 +32,20 @@
    </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="Core\**" />
+    <EmbeddedResource Remove="Core\**" />
+    <None Remove="Core\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.5" />
     <PackageReference Include="Meziantou.Analyzer" Version="2.0.264">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <ProjectReference Include="..\Simulator\Craftimizer.Simulator.csproj" />
-    <ProjectReference Include="..\Solver\Craftimizer.Solver.csproj" />
+    <ProjectReference Include="Core\Simulator\Craftimizer.Simulator.csproj" />
+    <ProjectReference Include="Core\Solver\Craftimizer.Solver.csproj" />
   </ItemGroup>
 
 </Project>

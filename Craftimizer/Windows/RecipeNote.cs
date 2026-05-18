@@ -997,72 +997,7 @@ public sealed unsafe class RecipeNote : Window, IDisposable
                 var spacing = ImGui.GetStyle().ItemSpacing.Y;
                 var miniRowHeight = (windowHeight - spacing) / 2f;
 
-                {
-                    if (Service.Configuration.ShowOptimalMacroStat)
-                    {
-                        var progressHeight = windowHeight;
-                        if (simState.Progress >= simState.Input.Recipe.MaxProgress && simState.Input.Recipe.MaxQuality > 0)
-                        {
-                            ImGuiUtils.ArcProgress(
-                            (float)simState.Quality / simState.Input.Recipe.MaxQuality,
-                            progressHeight / 2f,
-                            .5f,
-                            ImGui.GetColorU32(ImGuiCol.TableBorderLight),
-                            ImGui.GetColorU32(Colors.Quality));
-                            if (ImGui.IsItemHovered())
-                                ImGuiUtils.Tooltip($"Quality: {simState.Quality} / {simState.Input.Recipe.MaxQuality}");
-                        }
-                        else
-                        {
-                            ImGuiUtils.ArcProgress(
-                            (float)simState.Progress / simState.Input.Recipe.MaxProgress,
-                            progressHeight / 2f,
-                            .5f,
-                            ImGui.GetColorU32(ImGuiCol.TableBorderLight),
-                            ImGui.GetColorU32(Colors.Progress));
-                            if (ImGui.IsItemHovered())
-                                ImGuiUtils.Tooltip($"Progress: {simState.Progress} / {simState.Input.Recipe.MaxProgress}");
-                        }
-                    }
-                    else
-                    {
-                        ImGuiUtils.ArcProgress(
-                        (float)simState.Progress / simState.Input.Recipe.MaxProgress,
-                            miniRowHeight / 2f,
-                            .5f,
-                            ImGui.GetColorU32(ImGuiCol.TableBorderLight),
-                            ImGui.GetColorU32(Colors.Progress));
-                        if (ImGui.IsItemHovered())
-                            ImGuiUtils.Tooltip($"Progress: {simState.Progress} / {simState.Input.Recipe.MaxProgress}");
-
-                        ImGui.SameLine(0, spacing);
-                        ImGuiUtils.ArcProgress(
-                        (float)simState.Quality / simState.Input.Recipe.MaxQuality,
-                            miniRowHeight / 2f,
-                            .5f,
-                            ImGui.GetColorU32(ImGuiCol.TableBorderLight),
-                            ImGui.GetColorU32(Colors.Quality));
-                        if (ImGui.IsItemHovered())
-                            ImGuiUtils.Tooltip($"Quality: {simState.Quality} / {simState.Input.Recipe.MaxQuality}");
-                        ImGuiUtils.ArcProgress((float)simState.Durability / simState.Input.Recipe.MaxDurability,
-                        miniRowHeight / 2f,
-                            .5f,
-                            ImGui.GetColorU32(ImGuiCol.TableBorderLight),
-                            ImGui.GetColorU32(Colors.Durability));
-                        if (ImGui.IsItemHovered())
-                            ImGuiUtils.Tooltip($"Remaining Durability: {simState.Durability} / {simState.Input.Recipe.MaxDurability}");
-
-                        ImGui.SameLine(0, spacing);
-                        ImGuiUtils.ArcProgress(
-                        (float)simState.CP / simState.Input.Stats.CP,
-                            miniRowHeight / 2f,
-                            .5f,
-                            ImGui.GetColorU32(ImGuiCol.TableBorderLight),
-                            ImGui.GetColorU32(Colors.CP));
-                        if (ImGui.IsItemHovered())
-                            ImGuiUtils.Tooltip($"Remaining CP: {simState.CP} / {simState.Input.Stats.CP}");
-                    }
-                }
+                ImGuiUtils.DrawMacroStatArcs(simState, windowHeight, Service.Configuration.ShowOptimalMacroStat);
 
                 ImGui.TableNextColumn();
                 {
