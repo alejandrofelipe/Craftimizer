@@ -66,9 +66,9 @@ public static class Colors
         new(0.75f, 1f, 0.75f, 1f), // Green
     ];
 
-    public static (Vector4 Background, Vector4 Foreground) GetSolverProgressColors(int? stageValue)
+    public static (Vector4 Background, Vector4 Foreground) GetSolverProgressColors(int? stageValue, Configuration.ProgressBarType progressType)
     {
-        var fg = Service.Configuration.ProgressType switch
+        var fg = progressType switch
         {
             Configuration.ProgressBarType.Colorful => SolverProgressFgColorful,
             Configuration.ProgressBarType.Simple => SolverProgressFgMonochromatic,

@@ -38,11 +38,12 @@ public sealed class Plugin : IDalamudPlugin
 
     public Plugin(IDalamudPluginInterface pluginInterface)
     {
-        Service.Initialize(this, pluginInterface);
+        Service.Initialize(pluginInterface);
 
         WindowSystem = new("Craftimizer");
-        MacroRepository = new();
+        MacroRepository = new(pluginInterface);
         Configuration = Configuration.Load();
+        Configuration.SetRepository(MacroRepository);
         // Migrate macros from legacy JSON config on first run
         if (Configuration.macros.Count > 0)
         {
@@ -51,10 +52,11 @@ public sealed class Plugin : IDalamudPlugin
             Configuration.Save();
         }
         IconManager = new();
-        Hooks = new();
+        Service.IconManager = IconManager;
+        Hooks = new(this);
         CommunityMacros = new();
-        Ipc = new();
-        AttributeCommandManager = new();
+        Ipc = new(pluginInterface);
+        AttributeCommandManager = new(this);
 
         var assembly = Assembly.GetExecutingAssembly();
         Version = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion.Split('+')[0];
@@ -65,10 +67,10 @@ public sealed class Plugin : IDalamudPlugin
         else
             Icon = IconManager.GetAssemblyTexture("Graphics.icon.png");
 
-        SettingsWindow = new();
-        RecipeNoteWindow = new();
-        SynthHelperWindow = new();
-        ListWindow = new();
+        SettingsWindow = new(this);
+        RecipeNoteWindow = new(this);
+        SynthHelperWindow = new(this);
+        ListWindow = new(this);
 
         // Trigger static constructors so a hitch doesn't occur on first RecipeNote frame.
         FoodStatus.Initialize();
@@ -82,8 +84,8 @@ public sealed class Plugin : IDalamudPlugin
     public (CharacterStats? Character, RecipeData? Recipe, MacroEditor.CrafterBuffs? Buffs) GetOpenedStats()
     {
         var editorWindow = (EditorWindow?.IsOpen ?? false) ? EditorWindow : null;
-        var recipeData = editorWindow?.RecipeData ?? Service.Plugin.RecipeNoteWindow.RecipeData;
-        var characterStats = editorWindow?.CharacterStats ?? Service.Plugin.RecipeNoteWindow.CharacterStats;
+        var recipeData = editorWindow?.RecipeData ?? RecipeNoteWindow.RecipeData;
+        var characterStats = editorWindow?.CharacterStats ?? RecipeNoteWindow.CharacterStats;
         var buffs = editorWindow?.Buffs ?? (RecipeNoteWindow.CharacterStats != null ? new(Service.Objects.LocalPlayer?.StatusList) : null);
 
         return (characterStats, recipeData, buffs);
@@ -118,7 +120,7 @@ public sealed class Plugin : IDalamudPlugin
     public void OpenMacroEditor(CharacterStats characterStats, RecipeData recipeData, MacroEditor.CrafterBuffs buffs, IEnumerable<int>? ingredientHqCounts, IEnumerable<ActionType> actions, Action<IEnumerable<ActionType>>? setter)
     {
         EditorWindow?.Dispose();
-        EditorWindow = new(characterStats, recipeData, buffs, ingredientHqCounts, actions, setter);
+        EditorWindow = new(this, characterStats, recipeData, buffs, ingredientHqCounts, actions, setter);
     }
 
     [Command(name: "/craftaction", description: "Execute the suggested action in the synthesis helper. Can also be run inside a macro. This command is useful for controller players.")]
@@ -160,7 +162,7 @@ public sealed class Plugin : IDalamudPlugin
     public void OpenMacroClipboard(List<string> macros)
     {
         ClipboardWindow?.Dispose();
-        ClipboardWindow = new(macros);
+        ClipboardWindow = new(this, macros);
     }
 
     public static IActiveNotification DisplaySolverWarning(string text) =>

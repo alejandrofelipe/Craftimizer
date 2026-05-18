@@ -122,12 +122,19 @@ internal sealed class SimulatedMacro
             return State;
         }
 
-        public Reliablity GetReliability(in SimulationState initialState, IEnumerable<ActionType> actionSet, RecipeData recipeData) =>
+        public Reliablity GetReliability(in SimulationState initialState, IEnumerable<ActionType> actionSet, int reliabilitySimulationCount, RecipeData recipeData) =>
             Reliability ??=
-                new(initialState, actionSet, Service.Configuration.ReliabilitySimulationCount, recipeData);
+                new(initialState, actionSet, reliabilitySimulationCount, recipeData);
     };
 
     private List<Step> Macro { get; set; } = [];
+
+    private readonly Configuration _configuration;
+
+    public SimulatedMacro(Configuration configuration)
+    {
+        _configuration = configuration;
+    }
 
     private SimulationState initialState;
     public SimulationState InitialState
@@ -163,7 +170,7 @@ internal sealed class SimulatedMacro
 
     public Reliablity GetReliability(RecipeData recipeData, Index? idx = null) =>
         Macro.Count > 0 ?
-            Macro[idx ?? ^1].GetReliability(InitialState, Actions.ToArray(), recipeData) :
+            Macro[idx ?? ^1].GetReliability(InitialState, Actions.ToArray(), _configuration.ReliabilitySimulationCount, recipeData) :
             new(InitialState, Array.Empty<ActionType>(), 0, recipeData);
 
     private void TryRecalculateFrom(int index)
@@ -283,6 +290,6 @@ internal sealed class SimulatedMacro
         }
     }
 
-    private static Sim CreateSim() =>
-        Service.Configuration.ConditionRandomness ? new Sim() : new SimNoRandom();
+    private Sim CreateSim() =>
+        _configuration.ConditionRandomness ? new Sim() : new SimNoRandom();
 }

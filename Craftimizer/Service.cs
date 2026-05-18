@@ -31,18 +31,13 @@ public sealed class Service
     [PluginService] public static INotificationManager NotificationManager { get; private set; }
     [PluginService] public static ISeStringEvaluator SeStringEvaluator { get; private set; }
 
-    public static Plugin Plugin { get; private set; }
-    public static Configuration Configuration => Plugin.Configuration;
-    public static MacroRepository MacroRepository => Plugin.MacroRepository;
-    public static IconManager IconManager => Plugin.IconManager;
-    public static WindowSystem WindowSystem => Plugin.WindowSystem;
-    public static CommunityMacros CommunityMacros => Plugin.CommunityMacros;
-    public static Ipc Ipc => Plugin.Ipc;
 #pragma warning restore CS8618
 
-    internal static void Initialize(Plugin plugin, IDalamudPluginInterface iface)
+    // Set by Plugin for use in static extension methods (SimulatorUtils) that cannot use constructor DI
+    internal static IconManager IconManager { get; set; } = null!;
+
+    internal static void Initialize(IDalamudPluginInterface iface)
     {
-        Plugin = plugin;
         iface.Create<Service>();
     }
 }

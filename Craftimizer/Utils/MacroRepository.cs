@@ -1,5 +1,6 @@
 using Craftimizer.Plugin;
 using Craftimizer.Simulator.Actions;
+using Dalamud.Plugin;
 using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
@@ -19,9 +20,9 @@ public sealed class MacroRepository : IDisposable
 
     public IReadOnlyList<Macro> Macros => _macros;
 
-    public MacroRepository()
+    public MacroRepository(IDalamudPluginInterface pluginInterface)
     {
-        var dir = Service.PluginInterface.GetPluginConfigDirectory();
+        var dir = pluginInterface.GetPluginConfigDirectory();
         Directory.CreateDirectory(dir);
         var dbPath = Path.Combine(dir, "macros.db");
         _db = new SqliteConnection($"Data Source={dbPath}");

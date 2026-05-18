@@ -16,7 +16,7 @@ public static class MacroCopy
     private const ClassJob DefaultJob = ClassJob.Carpenter;
     public const int MacroSize = 15;
 
-    public static void Copy(IReadOnlyList<ActionType> actions)
+    public static void Copy(IReadOnlyList<ActionType> actions, global::Craftimizer.Plugin.Plugin plugin)
     {
         if (actions.Count == 0)
         {
@@ -30,21 +30,21 @@ public static class MacroCopy
             return;
         }
 
-        var macros = GetMacros(actions, Service.Configuration.MacroCopy);
+        var macros = GetMacros(actions, plugin.Configuration.MacroCopy);
 
-        switch (Service.Configuration.MacroCopy.Type)
+        switch (plugin.Configuration.MacroCopy.Type)
         {
             case MacroCopyConfiguration.CopyType.OpenWindow:
-                Service.Plugin.OpenMacroClipboard(macros);
+                plugin.OpenMacroClipboard(macros);
                 break;
             case MacroCopyConfiguration.CopyType.CopyToMacro:
-                CopyToMacro(macros);
+                CopyToMacro(macros, plugin);
                 break;
             case MacroCopyConfiguration.CopyType.CopyToClipboard:
-                CopyToClipboard(macros);
+                CopyToClipboard(macros, plugin);
                 break;
             case MacroCopyConfiguration.CopyType.CopyToMacroMate:
-                CopyToMacroMate(macros[0]);
+                CopyToMacroMate(macros[0], plugin);
                 break;
         }
     }
@@ -139,9 +139,9 @@ public static class MacroCopy
         return null;
     }
 
-    private static void CopyToMacro(List<string> macros)
+    private static void CopyToMacro(List<string> macros, global::Craftimizer.Plugin.Plugin plugin)
     {
-        var config = Service.Configuration.MacroCopy;
+        var config = plugin.Configuration.MacroCopy;
 
         int i, macroIdx;
         for (
@@ -162,7 +162,7 @@ public static class MacroCopy
         }
         if (i < macros.Count)
         {
-            Service.Plugin.OpenMacroClipboard(macros);
+            plugin.OpenMacroClipboard(macros);
             var rest = macros.Count - i;
             Plugin.Plugin.DisplayNotification(new()
             {
@@ -196,10 +196,10 @@ public static class MacroCopy
         RaptureHotbarModule.Instance()->ReloadMacroSlots((byte)set, (byte)idx);
     }
 
-    private static void CopyToClipboard(List<string> macros)
+    private static void CopyToClipboard(List<string> macros, global::Craftimizer.Plugin.Plugin plugin)
     {
         ImGui.SetClipboardText(string.Join(Environment.NewLine + Environment.NewLine, macros));
-        if (Service.Configuration.MacroCopy.ShowCopiedMessage)
+        if (plugin.Configuration.MacroCopy.ShowCopiedMessage)
         {
             Plugin.Plugin.DisplayNotification(new()
             {
@@ -211,9 +211,9 @@ public static class MacroCopy
         }
     }
 
-    private static void CopyToMacroMate(string macro)
+    private static void CopyToMacroMate(string macro, global::Craftimizer.Plugin.Plugin plugin)
     {
-        if (!Service.Ipc.MacroMateIsAvailable())
+        if (!plugin.Ipc.MacroMateIsAvailable())
         {
             Plugin.Plugin.DisplayNotification(new()
             {
@@ -225,11 +225,11 @@ public static class MacroCopy
             return;
         }
 
-        var parentPath = Service.Configuration.MacroCopy.MacroMateParent;
+        var parentPath = plugin.Configuration.MacroCopy.MacroMateParent;
         if (string.IsNullOrWhiteSpace(parentPath))
             parentPath = "/";
 
-        var (isValidParent, parentError) = Service.Ipc.MacroMateValidateGroupPath(parentPath);
+        var (isValidParent, parentError) = plugin.Ipc.MacroMateValidateGroupPath(parentPath);
         if (!isValidParent)
         {
             Plugin.Plugin.DisplayNotification(new()
@@ -242,9 +242,9 @@ public static class MacroCopy
             return;
         }
 
-        Service.Ipc.MacroMateCreateMacro(Service.Configuration.MacroCopy.MacroMateName, macro, parentPath, null);
+        plugin.Ipc.MacroMateCreateMacro(plugin.Configuration.MacroCopy.MacroMateName, macro, parentPath, null);
 
-        if (Service.Configuration.MacroCopy.ShowCopiedMessage)
+        if (plugin.Configuration.MacroCopy.ShowCopiedMessage)
         {
             Plugin.Plugin.DisplayNotification(new()
             {

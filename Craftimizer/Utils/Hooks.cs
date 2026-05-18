@@ -22,8 +22,11 @@ public sealed unsafe class Hooks : IDisposable
 
     public readonly Hook<IsActionHighlightedDelegate> IsActionHighlightedHook = null!;
 
-    public Hooks()
+    private readonly global::Craftimizer.Plugin.Plugin _plugin;
+
+    public Hooks(global::Craftimizer.Plugin.Plugin plugin)
     {
+        _plugin = plugin;
         UseActionHook = Service.GameInteropProvider.HookFromAddress<UseActionDelegate>((nint)ActionManager.MemberFunctionPointers.UseAction, UseActionDetour);
         IsActionHighlightedHook = Service.GameInteropProvider.HookFromAddress<IsActionHighlightedDelegate>((nint)ActionManager.MemberFunctionPointers.IsActionHighlighted, IsActionHighlightedDetour);
 
@@ -63,10 +66,10 @@ public sealed unsafe class Hooks : IDisposable
 
         try
         {
-            if (!Service.Configuration.SynthHelperAbilityAnts)
+            if (!_plugin.Configuration.SynthHelperAbilityAnts)
                 return ret;
 
-            if (Service.Plugin.SynthHelperWindow is not { } window)
+            if (_plugin.SynthHelperWindow is not { } window)
                 return ret;
 
             if (!window.ShouldDrawAnts)

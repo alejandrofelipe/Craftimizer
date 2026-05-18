@@ -48,17 +48,17 @@ public sealed partial class MacroEditor
 
                     using (var disabled = ImRaii.Disabled(SolverRunning))
                     {
-                        using var tint = ImRaii.PushColor(ImGuiCol.Text, ImGui.GetColorU32(ImGuiCol.TextDisabled), !Service.Configuration.ConditionRandomness);
+                        using var tint = ImRaii.PushColor(ImGuiCol.Text, ImGui.GetColorU32(ImGuiCol.TextDisabled), !_plugin.Configuration.ConditionRandomness);
                         if (ImGuiUtils.IconButtonSquare(FontAwesomeIcon.Dice))
                         {
-                            Service.Configuration.ConditionRandomness ^= true;
-                            Service.Configuration.Save();
+                            _plugin.Configuration.ConditionRandomness ^= true;
+                            _plugin.Configuration.Save();
 
                             RecalculateState();
                         }
                     }
                     if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-                        ImGuiUtils.TooltipWrapped($"Condition Randomness{(!Service.Configuration.ConditionRandomness ? " (Disabled)" : string.Empty)}\n" +
+                        ImGuiUtils.TooltipWrapped($"Condition Randomness{(!_plugin.Configuration.ConditionRandomness ? " (Disabled)" : string.Empty)}\n" +
                             "Allows the condition to fluctuate randomly like a real craft. " +
                             "Turns off when generating a macro.");
                 }
@@ -252,7 +252,7 @@ public sealed partial class MacroEditor
         ImGui.GetWindowDrawList().AddLine(pos, pos + new Vector2(availSpace, 0), ImGui.GetColorU32(ImGuiCol.Border));
         ImGui.Dummy(default);
         if (SolverRunning && SolverObject is { } solver)
-            DynamicBars.DrawProgressBar(solver, availSpace);
+            DynamicBars.DrawProgressBar(solver, _plugin.Configuration.ProgressType, availSpace);
         DrawMacroActions(availSpace);
     }
 }

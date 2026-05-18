@@ -81,8 +81,11 @@ public sealed unsafe class RecipeNote : Window, IDisposable
     private ILoadedTextureIcon NoManipulationBadge { get; }
     private IFontHandle AxisFont { get; }
 
-    public RecipeNote() : base(WindowNamePinned)
+    private readonly global::Craftimizer.Plugin.Plugin _plugin;
+
+    public RecipeNote(global::Craftimizer.Plugin.Plugin plugin) : base(WindowNamePinned)
     {
+        _plugin = plugin;
         ExpertBadge = IconManager.GetAssemblyTexture("Graphics.expert_badge.png");
         CollectibleBadge = IconManager.GetAssemblyTexture("Graphics.collectible_badge.png");
         CosmicExplorationBadge = IconManager.GetIcon(60810);
@@ -108,7 +111,7 @@ public sealed unsafe class RecipeNote : Window, IDisposable
             {
                 Icon = FontAwesomeIcon.Cog,
                 IconOffset = new(2, 1),
-                Click = _ => Service.Plugin.OpenSettingsTab("Crafting Log"),
+                Click = _ => _plugin.OpenSettingsTab("Crafting Log"),
                 ShowTooltip = () => ImGuiUtils.Tooltip("Open Settings")
             },
             new() {
@@ -119,7 +122,7 @@ public sealed unsafe class RecipeNote : Window, IDisposable
             }
         ];
 
-        Service.WindowSystem.AddWindow(this);
+        _plugin.WindowSystem.AddWindow(this);
     }
 
     private bool IsCollapsed { get; set; }
@@ -152,20 +155,20 @@ public sealed unsafe class RecipeNote : Window, IDisposable
                     CalculateSavedMacro();
 
                 // If it didn't exist before or it already ran, we need to recalculate
-                if (Service.Configuration.SuggestMacroAutomatically && SuggestedMacroTask?.Result == null && (SuggestedMacroTask?.Completed ?? true))
+                if (_plugin.Configuration.SuggestMacroAutomatically && SuggestedMacroTask?.Result == null && (SuggestedMacroTask?.Completed ?? true))
                     CalculateSuggestedMacro();
                 // If we don't want to suggest automatically, we should cancel and clean out the task
-                else if (!Service.Configuration.SuggestMacroAutomatically && SuggestedMacroTask?.Result == null)
+                else if (!_plugin.Configuration.SuggestMacroAutomatically && SuggestedMacroTask?.Result == null)
                 {
                     SuggestedMacroTask?.Cancel();
                     SuggestedMacroTask = null;
                 }
 
                 // If it didn't exist before or it already ran, we need to recalculate
-                if (Service.Configuration.ShowCommunityMacros && Service.Configuration.SearchCommunityMacroAutomatically && CommunityMacroTask?.Result == null && (CommunityMacroTask?.Completed ?? true))
+                if (_plugin.Configuration.ShowCommunityMacros && _plugin.Configuration.SearchCommunityMacroAutomatically && CommunityMacroTask?.Result == null && (CommunityMacroTask?.Completed ?? true))
                     CalculateCommunityMacro();
                 // If we don't want to search automatically, we should cancel and clean out the task
-                else if (!Service.Configuration.SearchCommunityMacroAutomatically && CommunityMacroTask?.Result == null)
+                else if (!_plugin.Configuration.SearchCommunityMacroAutomatically && CommunityMacroTask?.Result == null)
                 {
                     CommunityMacroTask?.Cancel();
                     CommunityMacroTask = null;
@@ -295,7 +298,7 @@ public sealed unsafe class RecipeNote : Window, IDisposable
             CalculateSavedMacro();
 
             // If we want to suggest automatically, we should recalculate
-            if (Service.Configuration.SuggestMacroAutomatically)
+            if (_plugin.Configuration.SuggestMacroAutomatically)
                 CalculateSuggestedMacro();
             // Otherwise, we should cancel and clean out the task
             else
@@ -305,7 +308,7 @@ public sealed unsafe class RecipeNote : Window, IDisposable
             }
 
             // If we want to search automatically, we should recalculate
-            if (Service.Configuration.ShowCommunityMacros && Service.Configuration.SearchCommunityMacroAutomatically)
+            if (_plugin.Configuration.ShowCommunityMacros && _plugin.Configuration.SearchCommunityMacroAutomatically)
                 CalculateCommunityMacro();
             // Otherwise, we should cancel and clean out the task
             else
@@ -337,7 +340,7 @@ public sealed unsafe class RecipeNote : Window, IDisposable
 
         IsCollapsed = true;
 
-        if (Service.Configuration.PinRecipeNoteToWindow)
+        if (_plugin.Configuration.PinRecipeNoteToWindow)
         {
             ref var unit = ref *Addon;
             var scale = unit.Scale;
@@ -434,7 +437,7 @@ public sealed unsafe class RecipeNote : Window, IDisposable
                 State = macroTaskResult?.Item2,
             };
             if (macroTaskResult is { } macro && macro.Item1 is { } savedMacro)
-                state.MacroEditorSetter = a => { savedMacro.ActionEnumerable = a; Service.Configuration.Save(); };
+                state.MacroEditorSetter = a => { savedMacro.ActionEnumerable = a; _plugin.Configuration.Save(); };
             DrawMacro(in state, panelWidth);
         }
 
@@ -453,7 +456,7 @@ public sealed unsafe class RecipeNote : Window, IDisposable
             DrawMacro(in state, panelWidth);
         }
 
-        if (Service.Configuration.ShowCommunityMacros)
+        if (_plugin.Configuration.ShowCommunityMacros)
         {
             var macroTaskResult = CommunityMacroTask?.Result;
             var state = new MacroTaskState()
@@ -505,10 +508,10 @@ public sealed unsafe class RecipeNote : Window, IDisposable
         ImGuiHelpers.ScaledDummy(3);
 
         if (ImGui.Button("View Saved Macros", new(availWidth, 0)))
-            Service.Plugin.OpenMacroListWindow();
+            _plugin.OpenMacroListWindow();
 
         if (ImGui.Button("Open in Macro Editor", new(availWidth, 0)))
-            Service.Plugin.OpenMacroEditor(CharacterStats!, RecipeData!, new(Service.Objects.LocalPlayer!.StatusList), CalculateIngredientHqCounts(), [], null);
+            _plugin.OpenMacroEditor(CharacterStats!, RecipeData!, new(Service.Objects.LocalPlayer!.StatusList), CalculateIngredientHqCounts(), [], null);
     }
 
     private void DrawCharacterStats()
@@ -546,7 +549,7 @@ public sealed unsafe class RecipeNote : Window, IDisposable
             uv0 /= new Vector2(56);
             uv1 /= new Vector2(56);
 
-            ImGui.Image(Service.IconManager.GetIconCached(RecipeData.ClassJob.GetIconId()).Handle, new Vector2(imageSize), uv0, uv1);
+            ImGui.Image(_plugin.IconManager.GetIconCached(RecipeData.ClassJob.GetIconId()).Handle, new Vector2(imageSize), uv0, uv1);
             ImGui.SameLine(0, 5);
 
             if (level != 0)
@@ -644,7 +647,7 @@ public sealed unsafe class RecipeNote : Window, IDisposable
                     ImGuiUtils.TextCentered($"You are missing the required equipment.");
                     ImGuiUtils.AlignCentered(imageSize + 5 + ImGui.CalcTextSize(itemName).X);
                     ImGui.AlignTextToFramePadding();
-                    ImGui.Image(Service.IconManager.GetIconCached(item.Icon).Handle, new(imageSize));
+                    ImGui.Image(_plugin.IconManager.GetIconCached(item.Icon).Handle, new(imageSize));
                     ImGui.SameLine(0, 5);
                     ImGui.TextUnformatted(itemName);
                 }
@@ -653,7 +656,7 @@ public sealed unsafe class RecipeNote : Window, IDisposable
                 {
                     var status = RecipeData.Recipe.StatusRequired.Value!;
                     var statusName = status.Name.ToString();
-                    var statusIcon = Service.IconManager.GetIconCached(status.Icon);
+                    var statusIcon = _plugin.IconManager.GetIconCached(status.Icon);
                     var imageSize = new Vector2(ImGui.GetFrameHeight() * (statusIcon.AspectRatio ?? 1), ImGui.GetFrameHeight());
 
                     ImGuiUtils.TextCentered($"You are missing the required status effect.");
@@ -739,7 +742,7 @@ public sealed unsafe class RecipeNote : Window, IDisposable
                 );
             ImGui.AlignTextToFramePadding();
 
-            ImGui.Image(Service.IconManager.GetIconCached(RecipeData.Recipe.ItemResult.Value!.Icon).Handle, new Vector2(imageSize));
+            ImGui.Image(_plugin.IconManager.GetIconCached(RecipeData.Recipe.ItemResult.Value!.Icon).Handle, new Vector2(imageSize));
 
             ImGui.SameLine(0, 5);
             ImGui.TextUnformatted(textLevel);
@@ -900,7 +903,7 @@ public sealed unsafe class RecipeNote : Window, IDisposable
                         var c = ImGui.GetCursorPos();
                         ImGuiUtils.AlignCentered(windowHeight + spacing + calcTextSize.X, ImGui.GetContentRegionAvail().X - stepsAvailWidthOffset);
 
-                        if (Service.Configuration.ProgressType == Configuration.ProgressBarType.None)
+                        if (_plugin.Configuration.ProgressType == Configuration.ProgressBarType.None)
                         {
                             var textSize = ImGui.CalcTextSize($"{fraction * 100:N0}%");
                             var cursor = ImGui.GetCursorPos();
@@ -911,7 +914,7 @@ public sealed unsafe class RecipeNote : Window, IDisposable
                         }
                         else
                         {
-                            var progressColors = Colors.GetSolverProgressColors(solver.ProgressStage);
+                            var progressColors = Colors.GetSolverProgressColors(solver.ProgressStage, _plugin.Configuration.ProgressType);
                             ImGuiUtils.ArcProgress(
                                 solver.IsIndeterminate ? (float)-ImGui.GetTime() : fraction,
                                 windowHeight / 2f + 2,
@@ -991,16 +994,16 @@ public sealed unsafe class RecipeNote : Window, IDisposable
                 var spacing = ImGui.GetStyle().ItemSpacing.Y;
                 var miniRowHeight = (windowHeight - spacing) / 2f;
 
-                ImGuiUtils.DrawMacroStatArcs(simState, windowHeight, Service.Configuration.ShowOptimalMacroStat);
+                ImGuiUtils.DrawMacroStatArcs(simState, windowHeight, _plugin.Configuration.ShowOptimalMacroStat);
 
                 ImGui.TableNextColumn();
                 {
                     if (ImGuiUtils.IconButtonSquare(FontAwesomeIcon.Edit, miniRowHeight))
-                        Service.Plugin.OpenMacroEditor(CharacterStats!, RecipeData!, new(Service.Objects.LocalPlayer!.StatusList), CalculateIngredientHqCounts(), actions, state.MacroEditorSetter);
+                        _plugin.OpenMacroEditor(CharacterStats!, RecipeData!, new(Service.Objects.LocalPlayer!.StatusList), CalculateIngredientHqCounts(), actions, state.MacroEditorSetter);
                     if (ImGui.IsItemHovered())
                         ImGuiUtils.Tooltip("Open in Macro Editor");
                     if (ImGuiUtils.IconButtonSquare(FontAwesomeIcon.Paste, miniRowHeight))
-                        MacroCopy.Copy(actions);
+                        MacroCopy.Copy(actions, _plugin);
                     if (ImGui.IsItemHovered())
                         ImGuiUtils.Tooltip("Copy to Clipboard");
                 }
@@ -1155,13 +1158,13 @@ public sealed unsafe class RecipeNote : Window, IDisposable
         {
             var input = new SimulationInput(CharacterStats!, RecipeData!.RecipeInfo, StartingQuality);
             var state = new SimulationState(input);
-            var config = Service.Configuration.RecipeNoteSolverConfig;
-            var canUseDelineations = !Service.Configuration.CheckDelineations || hasDelineations;
+            var config = _plugin.Configuration.RecipeNoteSolverConfig;
+            var canUseDelineations = !_plugin.Configuration.CheckDelineations || hasDelineations;
             if (!canUseDelineations)
                 config = config.FilterSpecialistActions();
             var mctsConfig = new MCTSConfig(config);
             var simulator = new SimulatorNoRandom();
-            List<Macro> macros = [.. Service.Configuration.Macros];
+            List<Macro> macros = [.. _plugin.Configuration.Macros];
 
             token.ThrowIfCancellationRequested();
 
@@ -1190,8 +1193,8 @@ public sealed unsafe class RecipeNote : Window, IDisposable
         {
             var input = new SimulationInput(CharacterStats!, RecipeData!.RecipeInfo, StartingQuality);
             var state = new SimulationState(input);
-            var config = Service.Configuration.RecipeNoteSolverConfig;
-            var canUseDelineations = !Service.Configuration.CheckDelineations || hasDelineations;
+            var config = _plugin.Configuration.RecipeNoteSolverConfig;
+            var canUseDelineations = !_plugin.Configuration.CheckDelineations || hasDelineations;
             if (!canUseDelineations)
                 config = config.FilterSpecialistActions();
 
@@ -1219,13 +1222,13 @@ public sealed unsafe class RecipeNote : Window, IDisposable
         {
             var input = new SimulationInput(CharacterStats!, RecipeData!.RecipeInfo, StartingQuality);
             var state = new SimulationState(input);
-            var config = Service.Configuration.RecipeNoteSolverConfig;
-            var canUseDelineations = !Service.Configuration.CheckDelineations || hasDelineations;
+            var config = _plugin.Configuration.RecipeNoteSolverConfig;
+            var canUseDelineations = !_plugin.Configuration.CheckDelineations || hasDelineations;
             if (!canUseDelineations)
                 config = config.FilterSpecialistActions();
             var mctsConfig = new MCTSConfig(config);
             var simulator = new SimulatorNoRandom();
-            var macros = Service.CommunityMacros.RetrieveRotations((int)RecipeData.Table.RowId, token).GetAwaiter().GetResult();
+            var macros = _plugin.CommunityMacros.RetrieveRotations((int)RecipeData.Table.RowId, token).GetAwaiter().GetResult();
 
             token.ThrowIfCancellationRequested();
 
@@ -1251,7 +1254,7 @@ public sealed unsafe class RecipeNote : Window, IDisposable
         SavedMacroTask?.Dispose();
         SuggestedMacroTask?.Dispose();
         CommunityMacroTask?.Dispose();
-        Service.WindowSystem.RemoveWindow(this);
+        _plugin.WindowSystem.RemoveWindow(this);
         AxisFont?.Dispose();
         ExpertBadge.Dispose();
         CollectibleBadge.Dispose();

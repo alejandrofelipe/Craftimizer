@@ -14,10 +14,10 @@ public sealed partial class MacroEditor
 
         RevertPreviousMacro();
 
-        if (Service.Configuration.ConditionRandomness)
+        if (_plugin.Configuration.ConditionRandomness)
         {
-            Service.Configuration.ConditionRandomness = false;
-            Service.Configuration.Save();
+            _plugin.Configuration.ConditionRandomness = false;
+            _plugin.Configuration.Save();
             RecalculateState();
         }
 
@@ -30,8 +30,8 @@ public sealed partial class MacroEditor
 
     private int CalculateBestMacroTask(SimulationState state, CancellationToken token, bool hasDelineations)
     {
-        var config = Service.Configuration.EditorSolverConfig;
-        var canUseDelineations = !Service.Configuration.CheckDelineations || hasDelineations;
+        var config = _plugin.Configuration.EditorSolverConfig;
+        var canUseDelineations = !_plugin.Configuration.CheckDelineations || hasDelineations;
         if (!canUseDelineations)
             config = config.FilterSpecialistActions();
 

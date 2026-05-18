@@ -78,9 +78,11 @@ public sealed partial class MacroEditor : Window, IDisposable
     private List<int> HQIngredientCounts { get; set; }
     private int StartingQuality => RecipeData.CalculateStartingQuality(HQIngredientCounts);
 
-    private SimulatedMacro Macro { get; set; } = new();
+    private SimulatedMacro Macro { get; set; } = null!;
     private SimulationState State => Macro.State;
     private SimulatedMacro.Reliablity Reliability => Macro.GetReliability(RecipeData);
+
+    private readonly global::Craftimizer.Plugin.Plugin _plugin;
 
     private ActionType[] DefaultActions { get; }
     private Action<IEnumerable<ActionType>>? MacroSetter { get; set; }
@@ -109,8 +111,10 @@ public sealed partial class MacroEditor : Window, IDisposable
     private CancellationTokenSource? popupImportUrlTokenSource;
     private CommunityMacros.CommunityMacro? popupImportUrlMacro;
 
-    public MacroEditor(CharacterStats characterStats, RecipeData recipeData, CrafterBuffs buffs, IEnumerable<int>? ingredientHqCounts, IEnumerable<ActionType> actions, Action<IEnumerable<ActionType>>? setter) : base("Craftimizer Macro Editor", WindowFlags)
+    public MacroEditor(global::Craftimizer.Plugin.Plugin plugin, CharacterStats characterStats, RecipeData recipeData, CrafterBuffs buffs, IEnumerable<int>? ingredientHqCounts, IEnumerable<ActionType> actions, Action<IEnumerable<ActionType>>? setter) : base("Craftimizer Macro Editor", WindowFlags)
     {
+        _plugin = plugin;
+        Macro = new(_plugin.Configuration);
         CharacterStats = characterStats;
         RecipeData = recipeData;
         Buffs = buffs;
@@ -145,7 +149,7 @@ public sealed partial class MacroEditor : Window, IDisposable
             {
                 Icon = FontAwesomeIcon.Cog,
                 IconOffset = new(2, 1),
-                Click = _ => Service.Plugin.OpenSettingsTab("Macro Editor"),
+                Click = _ => _plugin.OpenSettingsTab("Macro Editor"),
                 ShowTooltip = () => ImGuiUtils.Tooltip("Open Settings")
             },
             new() {
@@ -158,7 +162,7 @@ public sealed partial class MacroEditor : Window, IDisposable
 
         MinWindowHeight = float.PositiveInfinity;
 
-        Service.WindowSystem.AddWindow(this);
+        _plugin.WindowSystem.AddWindow(this);
     }
 
     private float MinWindowHeight { get; set; }
@@ -256,8 +260,8 @@ public sealed partial class MacroEditor : Window, IDisposable
         Macro.InitialState = new SimulationState(new(CharacterStats, RecipeData.RecipeInfo, StartingQuality));
     }
 
-    private static Sim CreateSim(in SimulationState state) =>
-        Service.Configuration.ConditionRandomness ? new Sim() { State = state } : new SimNoRandom() { State = state };
+    private Sim CreateSim(in SimulationState state) =>
+        _plugin.Configuration.ConditionRandomness ? new Sim() { State = state } : new SimNoRandom() { State = state };
 
     private void AddStep(ActionType action)
     {
@@ -280,7 +284,7 @@ public sealed partial class MacroEditor : Window, IDisposable
 
     public void Dispose()
     {
-        Service.WindowSystem.RemoveWindow(this);
+        _plugin.WindowSystem.RemoveWindow(this);
 
         CosmicExplorationBadge.Dispose();
         SplendorousBadge.Dispose();

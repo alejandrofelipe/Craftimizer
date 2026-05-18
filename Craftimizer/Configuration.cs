@@ -1,5 +1,6 @@
 using Craftimizer.Simulator.Actions;
 using Craftimizer.Solver;
+using Craftimizer.Utils;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -211,7 +212,11 @@ public partial class Configuration
     [JsonInclude] [JsonPropertyName("Macros")]
     internal List<Macro> macros { get; private set; } = [];
     [JsonIgnore]
-    public IReadOnlyList<Macro> Macros => Service.MacroRepository.Macros;
+    private MacroRepository? _macroRepository;
+    internal void SetRepository(MacroRepository repository) => _macroRepository = repository;
+
+    [JsonIgnore]
+    public IReadOnlyList<Macro> Macros => _macroRepository!.Macros;
     public int ReliabilitySimulationCount { get; set; } = 1000;
     public bool ConditionRandomness { get; set; } = true;
 
@@ -242,25 +247,25 @@ public partial class Configuration
 
     public void AddMacro(Macro macro)
     {
-        Service.MacroRepository.Add(macro);
+        _macroRepository!.Add(macro);
         OnMacroListChanged?.Invoke();
     }
 
     public void RemoveMacro(Macro macro)
     {
-        Service.MacroRepository.Remove(macro);
+        _macroRepository!.Remove(macro);
         OnMacroListChanged?.Invoke();
     }
 
-    public void SwapMacros(int i, int j)
+    public void SwapMacros(int fromIdx, int toIdx)
     {
-        Service.MacroRepository.Swap(i, j);
+        _macroRepository!.Swap(fromIdx, toIdx);
         OnMacroListChanged?.Invoke();
     }
 
     public void MoveMacro(int fromIdx, int toIdx)
     {
-        Service.MacroRepository.Move(fromIdx, toIdx);
+        _macroRepository!.Move(fromIdx, toIdx);
         OnMacroListChanged?.Invoke();
     }
 

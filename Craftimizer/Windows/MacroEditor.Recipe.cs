@@ -70,7 +70,7 @@ public sealed partial class MacroEditor
             (isExpert ? ImGuiUtils.CalcBadgePillSize("Expert").X + 3 : 0);
         ImGui.AlignTextToFramePadding();
 
-        ImGui.Image(Service.IconManager.GetIconCached(RecipeData.Recipe.ItemResult.Value.Icon).Handle, new Vector2(imageSize));
+        ImGui.Image(_plugin.IconManager.GetIconCached(RecipeData.Recipe.ItemResult.Value.Icon).Handle, new Vector2(imageSize));
 
         ImGui.SameLine(0, 5);
 
@@ -108,7 +108,7 @@ public sealed partial class MacroEditor
                     uv1 /= new Vector2(56);
 
                     ImGui.SetCursorPosY(ImGui.GetCursorPosY() + ImGui.GetStyle().FramePadding.Y / 2);
-                    ImGui.Image(Service.IconManager.GetIconCached(classJob.GetIconId()).Handle, new Vector2(imageSize), uv0, uv1);
+                    ImGui.Image(_plugin.IconManager.GetIconCached(classJob.GetIconId()).Handle, new Vector2(imageSize), uv0, uv1);
                     ImGui.SameLine(0, 5);
                     ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (fontHandle.FontSize - textLevelSize.Y) / 2);
                     ImGui.TextUnformatted(textLevel);
@@ -249,7 +249,7 @@ public sealed partial class MacroEditor
         var hqCount = HQIngredientCounts[idx];
 
         var canHq = ingredient.Item.CanBeHq;
-        var icon = Service.IconManager.GetIconCached(ingredient.Item.Icon, canHq);
+        var icon = _plugin.IconManager.GetIconCached(ingredient.Item.Icon, canHq);
         var imageSize = ImGui.GetFrameHeight();
 
         using (var d = ImRaii.Disabled(!canHq))

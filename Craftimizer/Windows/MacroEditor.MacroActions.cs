@@ -62,7 +62,7 @@ public sealed partial class MacroEditor
         }
         ImGui.SameLine();
         if (ImGuiUtils.IconButtonSquare(FontAwesomeIcon.Paste))
-            MacroCopy.Copy(Macro.Actions.ToArray());
+            MacroCopy.Copy(Macro.Actions.ToArray(), _plugin);
         if (ImGui.IsItemHovered())
             ImGuiUtils.Tooltip("Copy to Clipboard");
         ImGui.SameLine();
@@ -123,11 +123,11 @@ public sealed partial class MacroEditor
                 if (!string.IsNullOrWhiteSpace(popupSaveAsMacroName))
                 {
                     var newMacro = new Macro() { Name = popupSaveAsMacroName, Actions = Macro.Actions.ToArray() };
-                    Service.Configuration.AddMacro(newMacro);
+                    _plugin.Configuration.AddMacro(newMacro);
                     MacroSetter = actions =>
                     {
                         newMacro.ActionEnumerable = actions;
-                        Service.Configuration.Save();
+                        _plugin.Configuration.Save();
                     };
                     ImGui.CloseCurrentPopup();
                 }

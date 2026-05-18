@@ -1,4 +1,3 @@
-using Craftimizer.Plugin;
 using Dalamud.Plugin;
 using System;
 using System.Reflection;
@@ -16,7 +15,7 @@ public sealed class Ipc
         public string? Name { get; } = name;
     }
 
-    public Ipc()
+    public Ipc(IDalamudPluginInterface pluginInterface)
     {
         foreach (var prop in typeof(Ipc).GetProperties(BindingFlags.Instance | BindingFlags.Public))
         {
@@ -43,7 +42,7 @@ public sealed class Ipc
             if (propSubscriber is null)
                 throw new InvalidOperationException("GetIpcSubscriber method not found");
 
-            var callGateSubscriber = propSubscriber.MakeGenericMethod([.. typeMethod.GetParameterTypes(), returnsVoid ? typeof(int) : typeMethod.ReturnType]).Invoke(Service.PluginInterface, [attr.Name ?? prop.Name]);
+            var callGateSubscriber = propSubscriber.MakeGenericMethod([.. typeMethod.GetParameterTypes(), returnsVoid ? typeof(int) : typeMethod.ReturnType]).Invoke(pluginInterface, [attr.Name ?? prop.Name]);
 
             if (callGateSubscriber is null)
                 throw new InvalidOperationException("CallGateSubscriber is null");

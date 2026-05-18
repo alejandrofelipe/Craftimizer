@@ -171,13 +171,13 @@ internal static class DynamicBars
         }
     }
 
-    public static void DrawProgressBar(Solver.Solver solver, float? availSpace = null)
+    public static void DrawProgressBar(Solver.Solver solver, Configuration.ProgressBarType progressType, float? availSpace = null)
     {
         var spacing = ImGui.GetStyle().ItemSpacing.X;
         availSpace ??= ImGui.GetContentRegionAvail().X;
 
         var fraction = (float)solver.ProgressValue / solver.ProgressMax;
-        if (Service.Configuration.ProgressType == Configuration.ProgressBarType.None)
+        if (progressType == Configuration.ProgressBarType.None)
         {
             ImGui.AlignTextToFramePadding();
             ImGuiUtils.TextCentered($"{fraction * 100:N0}%", availSpace.Value);
@@ -189,7 +189,7 @@ internal static class DynamicBars
 
         var percentWidth = ImGui.CalcTextSize("100%").X;
         var progressWidth = availSpace.Value;
-        var progressColors = Colors.GetSolverProgressColors(solver.ProgressStage);
+        var progressColors = Colors.GetSolverProgressColors(solver.ProgressStage, progressType);
 
         fraction = Math.Clamp(fraction, 0, 1);
 

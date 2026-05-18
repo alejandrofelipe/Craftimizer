@@ -61,7 +61,9 @@ public sealed unsafe class SynthHelper : Window, IDisposable
         }
     }
     private SimulationState currentState;
-    private SimulatedMacro Macro { get; } = new();
+    private SimulatedMacro Macro { get; }
+
+    private readonly global::Craftimizer.Plugin.Plugin _plugin;
 
     private List<ActionType> PlayedActions { get; } = [];
     private bool CraftAutoSaved { get; set; }
@@ -73,11 +75,13 @@ public sealed unsafe class SynthHelper : Window, IDisposable
 
     private IFontHandle AxisFont { get; }
 
-    public SynthHelper() : base(WindowNamePinned)
+    public SynthHelper(global::Craftimizer.Plugin.Plugin plugin) : base(WindowNamePinned)
     {
+        _plugin = plugin;
+        Macro = new(_plugin.Configuration);
         AxisFont = Service.PluginInterface.UiBuilder.FontAtlas.NewGameFontHandle(new(GameFontFamilyAndSize.Axis14));
 
-        Service.Plugin.Hooks.OnActionUsed += OnUseAction;
+        _plugin.Hooks.OnActionUsed += OnUseAction;
 
         RespectCloseHotkey = false;
         DisableWindowSounds = true;
@@ -96,7 +100,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
             {
                 Icon = FontAwesomeIcon.Cog,
                 IconOffset = new(2, 1),
-                Click = _ => Service.Plugin.OpenSettingsTab("Synthesis Helper"),
+                Click = _ => _plugin.OpenSettingsTab("Synthesis Helper"),
                 ShowTooltip = () => ImGuiUtils.Tooltip("Open Settings")
             },
             new() {
@@ -107,7 +111,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
             }
         ];
 
-        Service.WindowSystem.AddWindow(this);
+        _plugin.WindowSystem.AddWindow(this);
     }
 
     private bool IsCollapsed { get; set; }
@@ -166,7 +170,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
         if (Service.Objects.LocalPlayer == null)
             return false;
 
-        if (!Service.Configuration.EnableSynthHelper)
+        if (!_plugin.Configuration.EnableSynthHelper)
             return false;
 
         var recipeId = CSRecipeNote.Instance()->ActiveCraftRecipeId;
@@ -189,7 +193,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
         if (Addon->AtkUnitBase.WindowNode == null)
             return false;
 
-        if (Service.Configuration.DisableSynthHelperOnMacro)
+        if (_plugin.Configuration.DisableSynthHelperOnMacro)
         {
             var module = RaptureShellModule.Instance();
             if (module->MacroCurrentLine >= 0)
@@ -213,7 +217,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
             OnStartCrafting(recipeId);
             OnStateUpdated();
 
-            if (Service.Configuration.CollapseSynthHelper) ShouldCollapse = true;
+            if (_plugin.Configuration.CollapseSynthHelper) ShouldCollapse = true;
         }
 
         if (IsRecalculateQueued)
@@ -249,7 +253,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
 
         IsCollapsed = true;
 
-        if (Service.Configuration.PinSynthHelperToWindow)
+        if (_plugin.Configuration.PinSynthHelperToWindow)
         {
             ref var unit = ref Addon->AtkUnitBase;
             var scale = unit.Scale;
@@ -310,12 +314,12 @@ public sealed unsafe class SynthHelper : Window, IDisposable
         {
             ImGuiHelpers.ScaledDummy(5);
             ImGuiUtils.DrawStateChip(ImGuiUtils.SolverState.Solving);
-            DynamicBars.DrawProgressBar(solver);
+            DynamicBars.DrawProgressBar(solver, _plugin.Configuration.ProgressType);
         }
     }
 
     private SimulationState? hoveredState;
-    private SimulationState DisplayedState => hoveredState ?? (Service.Configuration.SynthHelperDisplayOnlyFirstStep ? Macro.FirstState : Macro.State);
+    private SimulationState DisplayedState => hoveredState ?? (_plugin.Configuration.SynthHelperDisplayOnlyFirstStep ? Macro.FirstState : Macro.State);
 
     private void DrawMacro()
     {
@@ -379,7 +383,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
             lastState = state;
         }
 
-        var rows = (int)Math.Max(1, MathF.Ceiling(Service.Configuration.SynthHelperMaxDisplayCount / itemsPerRow));
+        var rows = (int)Math.Max(1, MathF.Ceiling(_plugin.Configuration.SynthHelperMaxDisplayCount / itemsPerRow));
         for (var i = 0; i < rows; ++i)
         {
             if (count <= i * itemsPerRow)
@@ -430,7 +434,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
             }
         }
 
-        var reliability = Macro.GetReliability(RecipeData!, Service.Configuration.SynthHelperDisplayOnlyFirstStep ? 0 : ^1);
+        var reliability = Macro.GetReliability(RecipeData!, _plugin.Configuration.SynthHelperDisplayOnlyFirstStep ? 0 : ^1);
         {
             var mainBars = new List<DynamicBars.BarData>()
             {
@@ -507,7 +511,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
         }
 
         if (ImGui.Button("Open in Macro Editor", new(-1, 0)))
-            Service.Plugin.OpenMacroEditor(CharacterStats!, RecipeData!, new(Service.Objects.LocalPlayer!.StatusList), null, [], null);
+            _plugin.OpenMacroEditor(CharacterStats!, RecipeData!, new(Service.Objects.LocalPlayer!.StatusList), null, [], null);
     }
 
     public bool ExecuteNextAction()
@@ -590,7 +594,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
     {
         if (CraftAutoSaved)
             return;
-        if (!Service.Configuration.AutoSaveCraftMacro)
+        if (!_plugin.Configuration.AutoSaveCraftMacro)
             return;
         if (PlayedActions.Count == 0)
             return;
@@ -611,7 +615,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
         var itemName = RecipeData.Recipe.ItemResult.ValueNullable?.Name.ExtractText() ?? $"Recipe {recipeId}";
         var actions = PlayedActions.ToArray();
 
-        var existing = Service.Configuration.Macros.FirstOrDefault(m => m.RecipeId == recipeId);
+        var existing = _plugin.Configuration.Macros.FirstOrDefault(m => m.RecipeId == recipeId);
 
         if (existing == null)
         {
@@ -622,7 +626,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
                 SavedScore = newScore,
             };
             macro.Actions = actions;
-            Service.Configuration.AddMacro(macro);
+            _plugin.Configuration.AddMacro(macro);
             Plugin.Plugin.DisplayNotification(new()
             {
                 Content = $"Macro saved for \"{itemName}\".",
@@ -635,7 +639,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
         {
             existing.SavedScore = newScore;
             existing.Actions = actions;
-            Service.Configuration.Save();
+            _plugin.Configuration.Save();
             Plugin.Plugin.DisplayNotification(new()
             {
                 Content = $"Better result found! Macro updated for \"{itemName}\" ({existing.SavedScore * 100:F0}% → {newScore * 100:F0}%).",
@@ -715,9 +719,9 @@ public sealed unsafe class SynthHelper : Window, IDisposable
         Macro.ClearQueue();
         Macro.Clear();
 
-        if (Service.Configuration.ConditionRandomness)
+        if (_plugin.Configuration.ConditionRandomness)
         {
-            Service.Configuration.ConditionRandomness = false;
+            _plugin.Configuration.ConditionRandomness = false;
             // Defer disk write; the setting will persist via normal save paths.
             Macro.RecalculateState();
         }
@@ -730,8 +734,8 @@ public sealed unsafe class SynthHelper : Window, IDisposable
 
     private int CalculateBestMacroTask(SimulationState state, CancellationToken token, bool hasDelineations)
     {
-        var config = Service.Configuration.SynthHelperSolverConfig;
-        var canUseDelineations = !Service.Configuration.CheckDelineations || hasDelineations;
+        var config = _plugin.Configuration.SynthHelperSolverConfig;
+        var canUseDelineations = !_plugin.Configuration.CheckDelineations || hasDelineations;
         if (!canUseDelineations)
             config = config.FilterSpecialistActions();
 
@@ -752,13 +756,13 @@ public sealed unsafe class SynthHelper : Window, IDisposable
 
     private void EnqueueAction(ActionType action)
     {
-        var newSize = Macro.Enqueue(action, Service.Configuration.SynthHelperMaxDisplayCount);
-        if (newSize >= Service.Configuration.SynthHelperStepCount || newSize >= Service.Configuration.SynthHelperMaxDisplayCount)
+        var newSize = Macro.Enqueue(action, _plugin.Configuration.SynthHelperMaxDisplayCount);
+        if (newSize >= _plugin.Configuration.SynthHelperStepCount || newSize >= _plugin.Configuration.SynthHelperMaxDisplayCount)
             SolverTask?.Cancel();
     }
 
-    private static Sim CreateSim(in SimulationState state) =>
-        Service.Configuration.ConditionRandomness ? new Sim() { State = state } : new SimNoRandom() { State = state };
+    private Sim CreateSim(in SimulationState state) =>
+        _plugin.Configuration.ConditionRandomness ? new Sim() { State = state } : new SimNoRandom() { State = state };
 
     /// <summary>
     /// Displays a progress bar showing how many actions of the current macro have
@@ -772,7 +776,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
         var current = Math.Clamp(CurrentActionCount, 0, total);
         var fraction = (float)current / total;
 
-        var config = Service.Configuration.MacroCopy;
+        var config = _plugin.Configuration.MacroCopy;
         var actionsPerSlot = MacroCopy.MacroSize
             - (config.UseNextMacro ? 1 : 0)
             - (config.UseMacroLock ? 1 : 0);
@@ -798,7 +802,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
     {
         if (RecipeData == null || SimulationInput == null) return;
 
-        var existing = Service.Configuration.Macros.FirstOrDefault(m => m.RecipeId == RecipeData.RecipeId);
+        var existing = _plugin.Configuration.Macros.FirstOrDefault(m => m.RecipeId == RecipeData.RecipeId);
         if (existing == null || existing.Actions.Count == 0) return;
 
         var solverScore = CalculateMacroScore(Macro.State);
@@ -811,7 +815,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
             Macro.Clear();
             Macro.ClearQueue();
             foreach (var action in existing.Actions)
-                Macro.Enqueue(action, Service.Configuration.SynthHelperMaxDisplayCount);
+                Macro.Enqueue(action, _plugin.Configuration.SynthHelperMaxDisplayCount);
             Macro.FlushQueue();
         }
     }
@@ -821,9 +825,9 @@ public sealed unsafe class SynthHelper : Window, IDisposable
     /// provided <paramref name="input"/> and updates its <c>SavedScore</c> so the
     /// cached value reflects the actual result achievable with the current gear.
     /// </summary>
-    private static void ReSyncSavedMacroScore(ushort recipeId, SimulationInput input)
+    private void ReSyncSavedMacroScore(ushort recipeId, SimulationInput input)
     {
-        var existing = Service.Configuration.Macros.FirstOrDefault(m => m.RecipeId == recipeId);
+        var existing = _plugin.Configuration.Macros.FirstOrDefault(m => m.RecipeId == recipeId);
         if (existing == null || existing.Actions.Count == 0) return;
 
         var sim = new SimNoRandom();
@@ -847,9 +851,9 @@ public sealed unsafe class SynthHelper : Window, IDisposable
 
     public void Dispose()
     {
-        Service.Plugin.Hooks.OnActionUsed -= OnUseAction;
+        _plugin.Hooks.OnActionUsed -= OnUseAction;
 
-        Service.WindowSystem.RemoveWindow(this);
+        _plugin.WindowSystem.RemoveWindow(this);
 
         AxisFont.Dispose();
     }

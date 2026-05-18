@@ -21,7 +21,8 @@ public sealed class Settings : Window, IDisposable
 {
     private const ImGuiWindowFlags WindowFlags = ImGuiWindowFlags.None;
 
-    private static Configuration Config => Service.Configuration;
+    private readonly Plugin _plugin;
+    private Configuration Config => _plugin.Configuration;
 
     private static float OptionWidth => 200 * ImGuiHelpers.GlobalScale;
     private static Vector2 OptionButtonSize => new(OptionWidth, ImGui.GetFrameHeight());
@@ -31,9 +32,10 @@ public sealed class Settings : Window, IDisposable
     private IFontHandle HeaderFont { get; }
     private IFontHandle SubheaderFont { get; }
 
-    public Settings() : base("Craftimizer Settings", WindowFlags)
+    public Settings(Plugin plugin) : base("Craftimizer Settings", WindowFlags)
     {
-        Service.WindowSystem.AddWindow(this);
+        _plugin = plugin;
+        _plugin.WindowSystem.AddWindow(this);
 
         HeaderFont = Service.PluginInterface.UiBuilder.FontAtlas.NewDelegateFontHandle(e => e.OnPreBuild(tk => tk.AddDalamudDefaultFont(UiBuilder.DefaultFontSizePx * 2f)));
         SubheaderFont = Service.PluginInterface.UiBuilder.FontAtlas.NewDelegateFontHandle(e => e.OnPreBuild(tk => tk.AddDalamudDefaultFont(UiBuilder.DefaultFontSizePx * 1.5f)));
@@ -505,7 +507,7 @@ public sealed class Settings : Window, IDisposable
             Config.Save();
     }
 
-    private static void DrawSolverConfig(ref SolverConfig configRef, SolverConfig defaultConfig, bool disableOptimal, out bool isDirty)
+    private void DrawSolverConfig(ref SolverConfig configRef, SolverConfig defaultConfig, bool disableOptimal, out bool isDirty)
     {
         isDirty = false;
 
@@ -785,11 +787,11 @@ public sealed class Settings : Window, IDisposable
             configRef = config;
     }
 
-    private static void DrawActionPool(ref ActionType[] actionPool, float poolWidth, out bool isDirty)
+    private void DrawActionPool(ref ActionType[] actionPool, float poolWidth, out bool isDirty)
     {
         isDirty = false;
 
-        var recipeData = Service.Plugin.GetDefaultStats().Recipe;
+        var recipeData = _plugin.GetDefaultStats().Recipe;
         HashSet<ActionType> pool = [.. actionPool];
 
         var imageSize = ImGui.GetFrameHeight() * 2;
@@ -1103,7 +1105,7 @@ public sealed class Settings : Window, IDisposable
 
         ImGuiHelpers.ScaledDummy(5);
 
-        var plugin = Service.Plugin;
+        var plugin = _plugin;
         var icon = plugin.Icon;
         var iconDim = new Vector2(128) * ImGuiHelpers.GlobalScale;
 
@@ -1201,7 +1203,7 @@ public sealed class Settings : Window, IDisposable
 
     public void Dispose()
     {
-        Service.WindowSystem.RemoveWindow(this);
+        _plugin.WindowSystem.RemoveWindow(this);
         SubheaderFont?.Dispose();
         HeaderFont?.Dispose();
     }

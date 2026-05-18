@@ -15,10 +15,12 @@ public sealed class MacroClipboard : Window, IDisposable
 {
     private const ImGuiWindowFlags WindowFlags = ImGuiWindowFlags.NoCollapse;
 
+    private readonly global::Craftimizer.Plugin.Plugin _plugin;
     private List<string> Macros { get; }
 
-    public MacroClipboard(IEnumerable<string> macros) : base("Macro Clipboard", WindowFlags)
+    public MacroClipboard(global::Craftimizer.Plugin.Plugin plugin, IEnumerable<string> macros) : base("Macro Clipboard", WindowFlags)
     {
+        _plugin = plugin;
         Macros = [.. macros];
 
         IsOpen = true;
@@ -26,7 +28,7 @@ public sealed class MacroClipboard : Window, IDisposable
         AllowClickthrough = false;
         BringToFront();
 
-        Service.WindowSystem.AddWindow(this);
+        _plugin.WindowSystem.AddWindow(this);
     }
 
     public override void Draw()
@@ -56,7 +58,7 @@ public sealed class MacroClipboard : Window, IDisposable
             if (buttonClicked)
             {
                 ImGui.SetClipboardText(macro);
-                if (Service.Configuration.MacroCopy.ShowCopiedMessage)
+                if (_plugin.Configuration.MacroCopy.ShowCopiedMessage)
                 {
                     Plugin.Plugin.DisplayNotification(new()
                     {
@@ -86,6 +88,6 @@ public sealed class MacroClipboard : Window, IDisposable
 
     public void Dispose()
     {
-        Service.WindowSystem.RemoveWindow(this);
+        _plugin.WindowSystem.RemoveWindow(this);
     }
 }

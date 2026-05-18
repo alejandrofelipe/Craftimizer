@@ -23,11 +23,13 @@ public sealed class MacroList : Window, IDisposable
     public CharacterStats? CharacterStats { get; private set; }
     public RecipeData? RecipeData { get; private set; }
 
-    private static IReadOnlyList<Macro> Macros => Service.Configuration.Macros;
+    private readonly global::Craftimizer.Plugin.Plugin _plugin;
+    private IReadOnlyList<Macro> Macros => _plugin.Configuration.Macros;
     private Dictionary<Macro, SimulationState> MacroStateCache { get; } = [];
 
-    public MacroList() : base("Craftimizer Macro List", WindowFlags, false)
+    public MacroList(global::Craftimizer.Plugin.Plugin plugin) : base("Craftimizer Macro List", WindowFlags, false)
     {
+        _plugin = plugin;
         RefreshSearch();
 
         Macro.OnMacroChanged += OnMacroChanged;
@@ -44,7 +46,7 @@ public sealed class MacroList : Window, IDisposable
             {
                 Icon = FontAwesomeIcon.Cog,
                 IconOffset = new(2, 1),
-                Click = _ => Service.Plugin.OpenSettingsTab("General"),
+                Click = _ => _plugin.OpenSettingsTab("General"),
                 ShowTooltip = () => ImGuiUtils.Tooltip("Open Settings")
             },
             new() {
@@ -55,7 +57,7 @@ public sealed class MacroList : Window, IDisposable
             }
         ];
 
-        Service.WindowSystem.AddWindow(this);
+        _plugin.WindowSystem.AddWindow(this);
     }
 
     public override bool DrawConditions()
@@ -68,7 +70,7 @@ public sealed class MacroList : Window, IDisposable
         var oldCharacterStats = CharacterStats;
         var oldRecipeData = RecipeData;
 
-        (CharacterStats, RecipeData, _) = Service.Plugin.GetDefaultStats();
+        (CharacterStats, RecipeData, _) = _plugin.GetDefaultStats();
 
         if (oldCharacterStats != CharacterStats || oldRecipeData != RecipeData)
             RecalculateStats();
@@ -107,7 +109,7 @@ public sealed class MacroList : Window, IDisposable
                         if (_target)
                         {
                             if (ImGuiExtras.AcceptDragDropPayload("macroListItem", out int j))
-                            Service.Configuration.MoveMacro(startIdx + j, startIdx + i);
+                            _plugin.Configuration.MoveMacro(startIdx + j, startIdx + i);
                         }
                     }
                 }
@@ -208,7 +210,7 @@ public sealed class MacroList : Window, IDisposable
             if (stateNullable is { } state)
             {
                 ImGui.TableNextColumn();
-                ImGuiUtils.DrawMacroStatArcs(state, windowHeight, Service.Configuration.ShowOptimalMacroStat);
+                ImGuiUtils.DrawMacroStatArcs(state, windowHeight, _plugin.Configuration.ShowOptimalMacroStat);
             }
 
             ImGui.TableNextColumn();
@@ -225,14 +227,14 @@ public sealed class MacroList : Window, IDisposable
                     ImGuiUtils.Tooltip("Rename");
 
                 if (ImGuiUtils.IconButtonSquare(FontAwesomeIcon.Paste, miniRowHeight))
-                    MacroCopy.Copy(macro.Actions);
+                    MacroCopy.Copy(macro.Actions, _plugin);
                 if (ImGui.IsItemHovered())
                     ImGuiUtils.Tooltip("Copy to Clipboard");
                 ImGui.SameLine(0, spacing);
                 using (var _disabled = ImRaii.Disabled(!ImGui.GetIO().KeyShift))
                 {
                     if (ImGuiUtils.IconButtonSquare(FontAwesomeIcon.Trash, miniRowHeight))
-                        Service.Configuration.RemoveMacro(macro);
+                        _plugin.Configuration.RemoveMacro(macro);
                 }
                 if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
                     ImGuiUtils.Tooltip("Delete (Hold Shift)");
@@ -297,7 +299,7 @@ public sealed class MacroList : Window, IDisposable
                 if (!string.IsNullOrWhiteSpace(popupMacroName))
                 {
                     popupMacro!.Name = popupMacroName;
-                    Service.Configuration.Save();
+                    _plugin.Configuration.Save();
                     ImGui.CloseCurrentPopup();
                 }
             }
@@ -327,10 +329,10 @@ public sealed class MacroList : Window, IDisposable
         sortedMacros = [.. query];
     }
 
-    private static void OpenEditor(Macro? macro)
+    private void OpenEditor(Macro? macro)
     {
-        var stats = Service.Plugin.GetDefaultStats();
-        Service.Plugin.OpenMacroEditor(stats.Character, stats.Recipe, stats.Buffs, null, macro?.Actions ?? Enumerable.Empty<ActionType>(), macro != null ? (actions => { macro.ActionEnumerable = actions; Service.Configuration.Save(); }) : null);
+        var stats = _plugin.GetDefaultStats();
+        _plugin.OpenMacroEditor(stats.Character, stats.Recipe, stats.Buffs, null, macro?.Actions ?? Enumerable.Empty<ActionType>(), macro != null ? (actions => { macro.ActionEnumerable = actions; _plugin.Configuration.Save(); }) : null);
     }
 
     private void OnMacroChanged(Macro macro)
@@ -362,6 +364,6 @@ public sealed class MacroList : Window, IDisposable
         Macro.OnMacroChanged -= OnMacroChanged;
         Configuration.OnMacroListChanged -= OnMacroListChanged;
 
-        Service.WindowSystem.RemoveWindow(this);
+        _plugin.WindowSystem.RemoveWindow(this);
     }
 }

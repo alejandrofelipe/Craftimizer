@@ -39,7 +39,7 @@ public sealed partial class MacroEditor
         uv0 /= new Vector2(56);
         uv1 /= new Vector2(56);
 
-        ImGui.Image(Service.IconManager.GetIconCached(RecipeData.ClassJob.GetIconId()).Handle, new Vector2(imageSize), uv0, uv1);
+        ImGui.Image(_plugin.IconManager.GetIconCached(RecipeData.ClassJob.GetIconId()).Handle, new Vector2(imageSize), uv0, uv1);
         ImGui.SameLine(0, 5);
         AxisFont.Text(textClassName);
 

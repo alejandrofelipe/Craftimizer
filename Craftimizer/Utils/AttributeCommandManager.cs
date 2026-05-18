@@ -19,9 +19,9 @@ public sealed class AttributeCommandManager : IDisposable
 {
     private HashSet<string> RegisteredCommands { get; } = [];
 
-    public AttributeCommandManager()
+    public AttributeCommandManager(global::Craftimizer.Plugin.Plugin plugin)
     {
-        var target = Service.Plugin;
+        var target = plugin;
         foreach (var method in target.GetType().GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
         {
             if (method.GetCustomAttribute<CommandAttribute>() is not { } command)
