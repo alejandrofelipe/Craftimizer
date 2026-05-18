@@ -36,7 +36,7 @@ public sealed class MacroList : Window, IDisposable
         CollapsedCondition = ImGuiCond.Appearing;
         Collapsed = false;
 
-        SizeConstraints = new() { MinimumSize = new(465, 520), MaximumSize = new(float.PositiveInfinity) };
+        SizeConstraints = new() { MinimumSize = new(UIConstants.MacroListMinWidth, UIConstants.MacroListMinHeight), MaximumSize = new(float.PositiveInfinity) };
 
         TitleBarButtons =
         [
@@ -140,7 +140,7 @@ public sealed class MacroList : Window, IDisposable
         }
     }
 
-    private const int MacrosPerPage = 20;
+    private const int MacrosPerPage = UIConstants.MacrosPerPage;
     private string searchText = string.Empty;
     private List<Macro> sortedMacros = null!;
     private bool isUnsorted = true;

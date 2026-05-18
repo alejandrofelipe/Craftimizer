@@ -132,7 +132,7 @@ public sealed partial class MacroEditor
 
                     using (var d = ImRaii.Disabled(specialistLevel > CharacterStats.Level))
                     {
-                        var tint = new Vector4(0.99f, 0.97f, 0.62f, 1f) * (v ? Vector4.One : disabledTint);
+                        var tint = Colors.SpecialistGold * (v ? Vector4.One : disabledTint);
                         if (ImGui.ImageButton(SpecialistBadge.Handle, new Vector2(imageButtonSize), default, Vector2.One, imageButtonPadding, default, tint))
                         {
                             v = !v;

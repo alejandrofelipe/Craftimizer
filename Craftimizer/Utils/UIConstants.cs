@@ -24,6 +24,9 @@ internal static class UIConstants
     // ── Macro list pagination ─────────────────────────────────────────────────
     public const int MacrosPerPage = 20;
 
+    // ── MacroEditor window ────────────────────────────────────────────────────
+    public const int MacroEditorMaxWidth = 2184;
+
     // ── Buff/status IDs (verified patch 7.x) ─────────────────────────────────
     public const ushort StatusIdWellFed           = 48;
     public const ushort StatusIdMedicated         = 49;

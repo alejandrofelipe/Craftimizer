@@ -86,8 +86,8 @@ public sealed unsafe class SynthHelper : Window, IDisposable
 
         SizeConstraints = new WindowSizeConstraints
         {
-            MinimumSize = new(494, -1),
-            MaximumSize = new(494, 10000)
+            MinimumSize = new(UIConstants.SynthHelperWidth, -1),
+            MaximumSize = new(UIConstants.SynthHelperWidth, 10000)
         };
 
         TitleBarButtons =

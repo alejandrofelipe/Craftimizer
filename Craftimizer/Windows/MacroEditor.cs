@@ -40,9 +40,9 @@ public sealed partial class MacroEditor : Window, IDisposable
         {
             characterStats = value with
             {
-                Craftsmanship = Math.Clamp(value.Craftsmanship, 0, 9000),
-                Control = Math.Clamp(value.Control, 0, 9000),
-                CP = Math.Clamp(value.CP, 180, 1000),
+                Craftsmanship = Math.Clamp(value.Craftsmanship, 0, UIConstants.MaxCraftStat),
+                Control = Math.Clamp(value.Control, 0, UIConstants.MaxCraftStat),
+                CP = Math.Clamp(value.CP, UIConstants.MinCP, UIConstants.MaxCP),
                 Level = Math.Clamp(value.Level, 1, 100),
             };
         }
@@ -173,7 +173,7 @@ public sealed partial class MacroEditor : Window, IDisposable
             (1.25f, 944),
             (1.50f, 1128),
             (2.00f, 1504),
-            (3.00f, 2184),
+            (3.00f, UIConstants.MacroEditorMaxWidth),
         };
 
     public override void PreDraw()

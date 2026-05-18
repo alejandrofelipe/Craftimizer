@@ -560,25 +560,19 @@ public sealed unsafe class RecipeNote : Window, IDisposable
             if (hasSplendorous)
             {
                 ImGui.SameLine(0, 3);
-                ImGui.Image(SplendorousBadge.Handle, new Vector2(imageSize));
-                if (ImGui.IsItemHovered())
-                    ImGuiUtils.Tooltip($"Splendorous Tool");
+                ImGuiUtils.DrawBadge(SplendorousBadge.Handle, new Vector2(imageSize), "Splendorous Tool");
             }
 
             if (hasSpecialist)
             {
                 ImGui.SameLine(0, 3);
-                ImGui.Image(SpecialistBadge.Handle, new Vector2(imageSize), Vector2.Zero, Vector2.One, new(0.99f, 0.97f, 0.62f, 1f));
-                if (ImGui.IsItemHovered())
-                    ImGuiUtils.Tooltip($"Specialist");
+                ImGuiUtils.DrawBadge(SpecialistBadge.Handle, new Vector2(imageSize), "Specialist", Colors.SpecialistGold);
             }
 
             if (shouldHaveManip)
             {
                 ImGui.SameLine(0, 3);
-                ImGui.Image(NoManipulationBadge.Handle, new Vector2(imageSize));
-                if (ImGui.IsItemHovered())
-                    ImGuiUtils.Tooltip($"No Manipulation (Missing Job Quest)");
+                ImGuiUtils.DrawBadge(NoManipulationBadge.Handle, new Vector2(imageSize), "No Manipulation (Missing Job Quest)");
             }
         }
 

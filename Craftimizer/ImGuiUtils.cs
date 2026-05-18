@@ -425,6 +425,19 @@ internal static class ImGuiUtils
         drawList.AddText(pos + padding, ImGui.GetColorU32(foreColor), text);
     }
 
+    /// <summary>
+    /// Draws a texture badge image (with optional tint) and shows <paramref name="tooltip"/> on hover.
+    /// </summary>
+    public static void DrawBadge(ImTextureID handle, Vector2 size, string tooltip, Vector4? tint = null)
+    {
+        if (tint.HasValue)
+            ImGui.Image(handle, size, Vector2.Zero, Vector2.One, tint.Value);
+        else
+            ImGui.Image(handle, size);
+        if (ImGui.IsItemHovered())
+            Tooltip(tooltip);
+    }
+
     public static void ProgressBar(float value, Vector2 size)
     {
         var style = ImGui.GetStyle();
