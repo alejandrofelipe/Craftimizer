@@ -90,8 +90,6 @@ public sealed partial class MacroEditor : Window, IDisposable
     private Solver.Solver? SolverObject { get; set; }
     private int? SolverStartStepCount { get; set; }
 
-    private ILoadedTextureIcon ExpertBadge { get; }
-    private ILoadedTextureIcon CollectibleBadge { get; }
     private ILoadedTextureIcon CosmicExplorationBadge { get; }
     private ILoadedTextureIcon SplendorousBadge { get; }
     private ILoadedTextureIcon SpecialistBadge { get; }
@@ -125,8 +123,6 @@ public sealed partial class MacroEditor : Window, IDisposable
         foreach (var action in DefaultActions)
             AddStep(action);
 
-        ExpertBadge = IconManager.GetAssemblyTexture("Graphics.expert_badge.png");
-        CollectibleBadge = IconManager.GetAssemblyTexture("Graphics.collectible_badge.png");
         CosmicExplorationBadge = IconManager.GetIcon(60810);
         SplendorousBadge = IconManager.GetAssemblyTexture("Graphics.splendorous.png");
         SpecialistBadge = IconManager.GetAssemblyTexture("Graphics.specialist.png");
@@ -286,8 +282,6 @@ public sealed partial class MacroEditor : Window, IDisposable
     {
         Service.WindowSystem.RemoveWindow(this);
 
-        ExpertBadge.Dispose();
-        CollectibleBadge.Dispose();
         CosmicExplorationBadge.Dispose();
         SplendorousBadge.Dispose();
         SpecialistBadge.Dispose();

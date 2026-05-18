@@ -392,6 +392,39 @@ internal static class ImGuiUtils
         }
     }
 
+    /// <summary>
+    /// Returns the size (in pixels) that a badge pill with the given text will occupy.
+    /// </summary>
+    public static Vector2 CalcBadgePillSize(string text)
+    {
+        var padding = new Vector2(7f, 2f) * ImGuiHelpers.GlobalScale;
+        return ImGui.CalcTextSize(text) + padding * 2;
+    }
+
+    /// <summary>
+    /// Draws a rounded pill badge with a translucent fill and border in <paramref name="foreColor"/>.
+    /// Advances the cursor by the full pill size (safe to use inline or with SameLine).
+    /// </summary>
+    public static void DrawBadgePill(string text, Vector4 foreColor)
+    {
+        var padding    = new Vector2(7f, 2f) * ImGuiHelpers.GlobalScale;
+        var textSize   = ImGui.CalcTextSize(text);
+        var totalSize  = textSize + padding * 2;
+        var rounding   = totalSize.Y / 2f;
+
+        var pos      = ImGui.GetCursorScreenPos();
+        var drawList = ImGui.GetWindowDrawList();
+
+        // Reserve layout space first, then draw on top via the draw list.
+        ImGui.Dummy(totalSize);
+
+        drawList.AddRectFilled(pos, pos + totalSize,
+            ImGui.GetColorU32(foreColor with { W = 0.14f }), rounding);
+        drawList.AddRect(pos, pos + totalSize,
+            ImGui.GetColorU32(foreColor with { W = 0.30f }), rounding);
+        drawList.AddText(pos + padding, ImGui.GetColorU32(foreColor), text);
+    }
+
     public static void ProgressBar(float value, Vector2 size)
     {
         var style = ImGui.GetStyle();

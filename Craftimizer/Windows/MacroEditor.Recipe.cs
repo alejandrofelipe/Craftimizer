@@ -44,9 +44,6 @@ public sealed partial class MacroEditor
         ImGuiUtils.TextCentered("Recipe");
 
         var textStars = new string('★', RecipeData!.Table.Stars);
-        var textStarsSize = Vector2.Zero;
-        if (!string.IsNullOrEmpty(textStars))
-            textStarsSize = AxisFont.CalcTextSize(textStars);
 
         string? textLevel = null;
         float textLevelSize;
@@ -64,16 +61,13 @@ public sealed partial class MacroEditor
         var isCollectable = RecipeData.IsCollectable;
         var isAdjustable = RecipeData.AdjustedJobLevel.HasValue;
         var imageSize = ImGui.GetFrameHeight();
-        var textSize = ImGui.GetFontSize();
-        var badgeSize = new Vector2(textSize * (ExpertBadge.AspectRatio ?? 1), textSize);
-        var badgeOffset = (imageSize - badgeSize.Y) / 2;
 
         var rightSideWidth =
             5 + textLevelSize +
-            (textStarsSize != Vector2.Zero ? textStarsSize.X + 3 : 0) +
+            (!string.IsNullOrEmpty(textStars) ? ImGuiUtils.CalcBadgePillSize(textStars).X + 3 : 0) +
             (isAdjustable ? imageSize + 3 : 0) +
-            (isCollectable ? badgeSize.X + 3 : 0) +
-            (isExpert ? badgeSize.X + 3 : 0);
+            (isCollectable ? ImGuiUtils.CalcBadgePillSize("Collectible").X + 3 : 0) +
+            (isExpert ? ImGuiUtils.CalcBadgePillSize("Expert").X + 3 : 0);
         ImGui.AlignTextToFramePadding();
 
         ImGui.Image(Service.IconManager.GetIconCached(RecipeData.Recipe.ItemResult.Value.Icon).Handle, new Vector2(imageSize));
@@ -139,13 +133,10 @@ public sealed partial class MacroEditor
             ImGui.TextUnformatted(textLevel);
         }
 
-        if (textStarsSize != Vector2.Zero)
+        if (!string.IsNullOrEmpty(textStars))
         {
             ImGui.SameLine(0, 3);
-
-            // Aligns better
-            ImGui.SetCursorPosY(ImGui.GetCursorPosY() - 1);
-            AxisFont.Text(textStars);
+            ImGuiUtils.DrawBadgePill(textStars, Colors.ActionSpecial);
         }
 
         if (isAdjustable)
@@ -159,19 +150,13 @@ public sealed partial class MacroEditor
         if (isCollectable)
         {
             ImGui.SameLine(0, 3);
-            ImGui.SetCursorPosY(ImGui.GetCursorPosY() + badgeOffset);
-            ImGui.Image(CollectibleBadge.Handle, badgeSize);
-            if (ImGui.IsItemHovered())
-                ImGuiUtils.Tooltip($"Collectible");
+            ImGuiUtils.DrawBadgePill("Collectible", Colors.Collectability);
         }
 
         if (isExpert)
         {
             ImGui.SameLine(0, 3);
-            ImGui.SetCursorPosY(ImGui.GetCursorPosY() + badgeOffset);
-            ImGui.Image(ExpertBadge.Handle, badgeSize);
-            if (ImGui.IsItemHovered())
-                ImGuiUtils.Tooltip($"Expert Recipe");
+            ImGuiUtils.DrawBadgePill("Expert", Colors.ActionSpecial);
         }
 
         using (var statsTable = ImRaii.Table("stats", 3, ImGuiTableFlags.BordersInnerV))
