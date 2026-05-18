@@ -24,7 +24,7 @@ public sealed class MacroList : Window, IDisposable
     public RecipeData? RecipeData { get; private set; }
 
     private readonly global::Craftimizer.Plugin.Plugin _plugin;
-    private IReadOnlyList<Macro> Macros => _plugin.Configuration.Macros;
+    private IReadOnlyList<Macro> Macros => _plugin.MacroRepository.Macros;
     private Dictionary<Macro, SimulationState> MacroStateCache { get; } = [];
 
     public MacroList(global::Craftimizer.Plugin.Plugin plugin) : base("Craftimizer Macro List", WindowFlags, false)
@@ -33,7 +33,7 @@ public sealed class MacroList : Window, IDisposable
         RefreshSearch();
 
         _plugin.MacroRepository.MacroUpdated += OnMacroChanged;
-        Configuration.OnMacroListChanged += OnMacroListChanged;
+        _plugin.MacroRepository.MacroListChanged += OnMacroListChanged;
 
         CollapsedCondition = ImGuiCond.Appearing;
         Collapsed = false;
@@ -109,7 +109,7 @@ public sealed class MacroList : Window, IDisposable
                         if (_target)
                         {
                             if (ImGuiExtras.AcceptDragDropPayload("macroListItem", out int j))
-                            _plugin.Configuration.MoveMacro(startIdx + j, startIdx + i);
+                            _plugin.MacroRepository.Move(startIdx + j, startIdx + i);
                         }
                     }
                 }
@@ -234,7 +234,7 @@ public sealed class MacroList : Window, IDisposable
                 using (var _disabled = ImRaii.Disabled(!ImGui.GetIO().KeyShift))
                 {
                     if (ImGuiUtils.IconButtonSquare(FontAwesomeIcon.Trash, miniRowHeight))
-                        _plugin.Configuration.RemoveMacro(macro);
+                        _plugin.MacroRepository.Remove(macro);
                 }
                 if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
                     ImGuiUtils.Tooltip("Delete (Hold Shift)");
@@ -299,7 +299,7 @@ public sealed class MacroList : Window, IDisposable
                 if (!string.IsNullOrWhiteSpace(popupMacroName))
                 {
                     popupMacro!.Name = popupMacroName;
-                    _plugin.Configuration.UpdateMacro(popupMacro!);
+                    _plugin.MacroRepository.Update(popupMacro!);
                     ImGui.CloseCurrentPopup();
                 }
             }
@@ -332,7 +332,7 @@ public sealed class MacroList : Window, IDisposable
     private void OpenEditor(Macro? macro)
     {
         var stats = _plugin.GetDefaultStats();
-        _plugin.OpenMacroEditor(stats.Character, stats.Recipe, stats.Buffs, null, macro?.Actions ?? Enumerable.Empty<ActionType>(), macro != null ? (actions => { macro.ActionEnumerable = actions; _plugin.Configuration.UpdateMacro(macro); }) : null);
+        _plugin.OpenMacroEditor(stats.Character, stats.Recipe, stats.Buffs, null, macro?.Actions ?? Enumerable.Empty<ActionType>(), macro != null ? (actions => { macro.ActionEnumerable = actions; _plugin.MacroRepository.Update(macro); }) : null);
     }
 
     private void OnMacroChanged(Macro macro)
@@ -362,7 +362,7 @@ public sealed class MacroList : Window, IDisposable
     public void Dispose()
     {
         _plugin.MacroRepository.MacroUpdated -= OnMacroChanged;
-        Configuration.OnMacroListChanged -= OnMacroListChanged;
+        _plugin.MacroRepository.MacroListChanged -= OnMacroListChanged;
 
         _plugin.WindowSystem.RemoveWindow(this);
     }

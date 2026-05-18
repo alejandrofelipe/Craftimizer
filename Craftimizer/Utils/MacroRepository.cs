@@ -13,7 +13,7 @@ namespace Craftimizer.Utils;
 /// The database is created automatically at <c>%APPDATA%\XIVLauncher\pluginConfigs\Craftimizer\macros.db</c>
 /// if it does not exist. On first run, any macros stored in the legacy JSON config are migrated here.
 /// </summary>
-public sealed class MacroRepository : IDisposable
+public sealed class MacroRepository : IDisposable, IMacroStore
 {
     private readonly SqliteConnection _db;
     private readonly List<Macro> _macros = [];
@@ -22,6 +22,9 @@ public sealed class MacroRepository : IDisposable
 
     /// <summary>Fired after <see cref="Update"/> persists a macro mutation.</summary>
     public event Action<Macro>? MacroUpdated;
+
+    /// <summary>Fired when the macro list itself changes (add, remove, reorder).</summary>
+    public event Action? MacroListChanged;
 
     public MacroRepository(IDalamudPluginInterface pluginInterface)
     {
@@ -116,9 +119,9 @@ public sealed class MacroRepository : IDisposable
         catch { tx.Rollback(); throw; }
 
         _macros.Add(macro);
+        MacroListChanged?.Invoke();
     }
 
-    /// <summary>Removes a macro from the database.</summary>
     public void Remove(Macro macro)
     {
         using var cmd = Command("DELETE FROM Macros WHERE Id=$id");
@@ -126,29 +129,30 @@ public sealed class MacroRepository : IDisposable
         cmd.ExecuteNonQuery();
         _macros.Remove(macro);
         RewriteDisplayOrders();
+        MacroListChanged?.Invoke();
     }
 
-    /// <summary>Swaps the display order of two macros by index.</summary>
     public void Swap(int i, int j)
     {
         (_macros[i], _macros[j]) = (_macros[j], _macros[i]);
         RewriteDisplayOrders();
+        MacroListChanged?.Invoke();
     }
 
-    /// <summary>Moves a macro from one index to another.</summary>
     public void Move(int fromIdx, int toIdx)
     {
         var macro = _macros[fromIdx];
         _macros.RemoveAt(fromIdx);
         _macros.Insert(toIdx, macro);
         RewriteDisplayOrders();
+        MacroListChanged?.Invoke();
     }
 
     // ── Migration from legacy JSON ─────────────────────────────────────────────
 
     /// <summary>
     /// Called once during startup to migrate macros from the old JSON config.
-    /// Inserts each macro without firing <see cref="Configuration.OnMacroListChanged"/>.
+    /// Inserts each macro without firing <see cref="MacroListChanged"/>.
     /// </summary>
     internal void MigrateFromJson(IReadOnlyList<Macro> legacyMacros)
     {

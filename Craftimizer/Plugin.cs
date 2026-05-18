@@ -43,7 +43,6 @@ public sealed class Plugin : IDalamudPlugin
         WindowSystem = new("Craftimizer");
         MacroRepository = new(pluginInterface);
         Configuration = Configuration.Load();
-        Configuration.SetRepository(MacroRepository);
         // Migrate macros from legacy JSON config on first run
         if (Configuration.macros.Count > 0)
         {

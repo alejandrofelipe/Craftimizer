@@ -437,7 +437,7 @@ public sealed unsafe class RecipeNote : Window, IDisposable
                 State = macroTaskResult?.Item2,
             };
             if (macroTaskResult is { } macro && macro.Item1 is { } savedMacro)
-                state.MacroEditorSetter = a => { savedMacro.ActionEnumerable = a; _plugin.Configuration.UpdateMacro(savedMacro); };
+                state.MacroEditorSetter = a => { savedMacro.ActionEnumerable = a; _plugin.MacroRepository.Update(savedMacro); };
             DrawMacro(in state, panelWidth);
         }
 
@@ -1164,7 +1164,7 @@ public sealed unsafe class RecipeNote : Window, IDisposable
                 config = config.FilterSpecialistActions();
             var mctsConfig = new MCTSConfig(config);
             var simulator = new SimulatorNoRandom();
-            List<Macro> macros = [.. _plugin.Configuration.Macros];
+            List<Macro> macros = [.. _plugin.MacroRepository.Macros];
 
             token.ThrowIfCancellationRequested();
 

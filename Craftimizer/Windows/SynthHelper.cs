@@ -615,7 +615,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
         var itemName = RecipeData.Recipe.ItemResult.ValueNullable?.Name.ExtractText() ?? $"Recipe {recipeId}";
         var actions = PlayedActions.ToArray();
 
-        var existing = _plugin.Configuration.Macros.FirstOrDefault(m => m.RecipeId == recipeId);
+        var existing = _plugin.MacroRepository.Macros.FirstOrDefault(m => m.RecipeId == recipeId);
 
         if (existing == null)
         {
@@ -626,7 +626,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
                 SavedScore = newScore,
             };
             macro.Actions = actions;
-            _plugin.Configuration.AddMacro(macro);
+            _plugin.MacroRepository.Add(macro);
             Plugin.Plugin.DisplayNotification(new()
             {
                 Content = $"Macro saved for \"{itemName}\".",
@@ -802,7 +802,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
     {
         if (RecipeData == null || SimulationInput == null) return;
 
-        var existing = _plugin.Configuration.Macros.FirstOrDefault(m => m.RecipeId == RecipeData.RecipeId);
+        var existing = _plugin.MacroRepository.Macros.FirstOrDefault(m => m.RecipeId == RecipeData.RecipeId);
         if (existing == null || existing.Actions.Count == 0) return;
 
         var solverScore = CalculateMacroScore(Macro.State);
@@ -827,7 +827,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
     /// </summary>
     private void ReSyncSavedMacroScore(ushort recipeId, SimulationInput input)
     {
-        var existing = _plugin.Configuration.Macros.FirstOrDefault(m => m.RecipeId == recipeId);
+        var existing = _plugin.MacroRepository.Macros.FirstOrDefault(m => m.RecipeId == recipeId);
         if (existing == null || existing.Actions.Count == 0) return;
 
         var sim = new SimNoRandom();

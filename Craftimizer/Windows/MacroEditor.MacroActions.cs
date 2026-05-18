@@ -123,11 +123,11 @@ public sealed partial class MacroEditor
                 if (!string.IsNullOrWhiteSpace(popupSaveAsMacroName))
                 {
                     var newMacro = new Macro() { Name = popupSaveAsMacroName, Actions = Macro.Actions.ToArray() };
-                    _plugin.Configuration.AddMacro(newMacro);
+                    _plugin.MacroRepository.Add(newMacro);
                     MacroSetter = actions =>
                     {
                         newMacro.ActionEnumerable = actions;
-                        _plugin.Configuration.UpdateMacro(newMacro);
+                        _plugin.MacroRepository.Update(newMacro);
                     };
                     ImGui.CloseCurrentPopup();
                 }

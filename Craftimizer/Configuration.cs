@@ -1,6 +1,5 @@
 using Craftimizer.Simulator.Actions;
 using Craftimizer.Solver;
-using Craftimizer.Utils;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -180,16 +179,9 @@ public partial class Configuration
         None
     }
 
-    public static event Action? OnMacroListChanged;
-
     [JsonInclude] [JsonPropertyName("Macros")]
     internal List<Macro> macros { get; private set; } = [];
-    [JsonIgnore]
-    private MacroRepository? _macroRepository;
-    internal void SetRepository(MacroRepository repository) => _macroRepository = repository;
 
-    [JsonIgnore]
-    public IReadOnlyList<Macro> Macros => _macroRepository!.Macros;
     public int ReliabilitySimulationCount { get; set; } = 1000;
     public bool ConditionRandomness { get; set; } = true;
 
@@ -218,30 +210,6 @@ public partial class Configuration
 
     public MacroCopyConfiguration MacroCopy { get; set; } = new();
 
-    public void AddMacro(Macro macro)
-    {
-        _macroRepository!.Add(macro);
-        OnMacroListChanged?.Invoke();
-    }
-
-    public void RemoveMacro(Macro macro)
-    {
-        _macroRepository!.Remove(macro);
-        OnMacroListChanged?.Invoke();
-    }
-
-    public void SwapMacros(int fromIdx, int toIdx)
-    {
-        _macroRepository!.Swap(fromIdx, toIdx);
-        OnMacroListChanged?.Invoke();
-    }
-
-    public void MoveMacro(int fromIdx, int toIdx)
-    {
-        _macroRepository!.Move(fromIdx, toIdx);
-        OnMacroListChanged?.Invoke();
-    }
-
     [JsonSourceGenerationOptions(Converters = [typeof(StoredActionTypeConverter)])]
     [JsonSerializable(typeof(Configuration))]
     internal sealed partial class JsonContext : JsonSerializerContext
@@ -251,8 +219,6 @@ public partial class Configuration
             Converters = { new StoredActionTypeConverter() }
         };
     }
-
-    public void UpdateMacro(Macro macro) => _macroRepository!.Update(macro);
 
     public void Save()
     {
