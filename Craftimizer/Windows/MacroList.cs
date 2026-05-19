@@ -27,7 +27,7 @@ public sealed class MacroList : Window, IDisposable
     private IReadOnlyList<Macro> Macros => _plugin.MacroRepository.Macros;
     private Dictionary<Macro, SimulationState> MacroStateCache { get; } = [];
 
-    public MacroList(global::Craftimizer.Plugin.Plugin plugin) : base("Craftimizer Macro List", WindowFlags, false)
+    public MacroList(global::Craftimizer.Plugin.Plugin plugin) : base("Craftimizer Macros", WindowFlags, false)
     {
         _plugin = plugin;
         RefreshSearch();
@@ -42,6 +42,13 @@ public sealed class MacroList : Window, IDisposable
 
         TitleBarButtons =
         [
+            new()
+            {
+                Icon = FontAwesomeIcon.Plus,
+                IconOffset = new(2, 1),
+                Click = _ => OpenEditor(null),
+                ShowTooltip = () => ImGuiUtils.Tooltip("New Macro")
+            },
             new()
             {
                 Icon = FontAwesomeIcon.Cog,
@@ -74,17 +81,23 @@ public sealed class MacroList : Window, IDisposable
 
         if (oldCharacterStats != CharacterStats || oldRecipeData != RecipeData)
             RecalculateStats();
+        Theme.Push();
+    }
+
+    public override void PostDraw()
+    {
+        Theme.Pop();
+        base.PostDraw();
     }
 
     public override void Draw()
     {
         DrawSearchBar();
         DrawPagination();
-        using var group = ImRaii.Child("macros", new(-1, -1));
+        using var child = ImRaii.Child("macros", new(-1, -1));
         if (sortedMacros.Count > 0)
         {
             var width = ImGui.GetContentRegionAvail().X;
-            var totalPages = (int)Math.Ceiling(sortedMacros.Count / (float)MacrosPerPage);
             var startIdx = currentPage * MacrosPerPage;
             var endIdx = Math.Min(startIdx + MacrosPerPage, sortedMacros.Count);
             var macros = sortedMacros.GetRange(startIdx, endIdx - startIdx);
@@ -109,7 +122,7 @@ public sealed class MacroList : Window, IDisposable
                         if (_target)
                         {
                             if (ImGuiExtras.AcceptDragDropPayload("macroListItem", out int j))
-                            _plugin.MacroRepository.Move(startIdx + j, startIdx + i);
+                                _plugin.MacroRepository.Move(startIdx + j, startIdx + i);
                         }
                     }
                 }
@@ -117,28 +130,67 @@ public sealed class MacroList : Window, IDisposable
         }
         else
         {
-            var text1 = "You have no macros! Create one by opening";
-            var text2 = "the Macro Editor here or from the Crafting Log.";
-            var text3 = "Open Crafting Log";
-            var text4 = "Open Macro Editor";
-            var buttonRowWidth = ImGui.CalcTextSize(text3).X + ImGui.CalcTextSize(text4).X + ImGui.GetStyle().ItemSpacing.X * 5;
-            var size = new Vector2(
-                Math.Max(
-                    Math.Max(ImGui.CalcTextSize(text1).X, ImGui.CalcTextSize(text2).X),
-                    buttonRowWidth
-                ),
-                ImGui.GetTextLineHeightWithSpacing() * 2 + ImGui.GetFrameHeight()
-            );
-            ImGuiUtils.AlignMiddle(size);
-            using var child = ImRaii.Child("##macroMessage", size);
-            ImGuiUtils.TextCentered(text1);
-            ImGuiUtils.TextCentered(text2);
-            ImGuiUtils.AlignCentered(buttonRowWidth);
-            if (ImGui.Button(text3))
+            DrawEmptyState();
+        }
+    }
+
+    private void DrawEmptyState()
+    {
+        var availW = ImGui.GetContentRegionAvail().X;
+        var availH = ImGui.GetContentRegionAvail().Y;
+        var spacing = ImGui.GetStyle().ItemSpacing.Y;
+        var iconH = ImGui.GetTextLineHeight() * 1.8f;
+
+        if (!string.IsNullOrWhiteSpace(searchText))
+        {
+            var totalH = iconH + spacing
+                + ImGui.GetTextLineHeightWithSpacing()
+                + ImGui.GetTextLineHeight()
+                + spacing * 2 + ImGui.GetFrameHeight();
+            ImGui.SetCursorPosY(ImGui.GetCursorPosY() + Math.Max(0f, (availH - totalH) / 2f));
+
+            using (ImRaii.PushFont(UiBuilder.IconFont))
+            using (ImRaii.PushColor(ImGuiCol.Text, Colors.TextMuted))
+                ImGuiUtils.TextCentered(FontAwesomeIcon.Search.ToIconString(), availW);
+            ImGuiUtils.TextCentered($"No macros match \"{searchText}\"", availW);
+            using (ImRaii.PushColor(ImGuiCol.Text, Colors.TextMuted))
+                ImGuiUtils.TextCentered("Try a different search term.", availW);
+
+            var btnW = 160f * ImGuiHelpers.GlobalScale;
+            ImGui.SetCursorPosY(ImGui.GetCursorPosY() + spacing);
+            ImGuiUtils.AlignCentered(btnW, availW);
+            if (ImGui.Button("Clear Search", new(btnW, 0)))
+            {
+                searchText = string.Empty;
+                RefreshSearch();
+            }
+        }
+        else
+        {
+            var btnW = 200f * ImGuiHelpers.GlobalScale;
+            var totalH = iconH + spacing
+                + ImGui.GetTextLineHeightWithSpacing()
+                + ImGui.GetTextLineHeight()
+                + spacing * 2 + ImGui.GetFrameHeight()
+                + spacing + ImGui.GetFrameHeight();
+            ImGui.SetCursorPosY(ImGui.GetCursorPosY() + Math.Max(0f, (availH - totalH) / 2f));
+
+            using (ImRaii.PushFont(UiBuilder.IconFont))
+            using (ImRaii.PushColor(ImGuiCol.Text, Colors.TextMuted))
+                ImGuiUtils.TextCentered(FontAwesomeIcon.Clipboard.ToIconString(), availW);
+            ImGuiUtils.TextCentered("No macros yet", availW);
+            using (ImRaii.PushColor(ImGuiCol.Text, Colors.TextMuted))
+                ImGuiUtils.TextCentered("Create your first macro from the Macro Editor or Crafting Log.", availW);
+
+            ImGui.SetCursorPosY(ImGui.GetCursorPosY() + spacing);
+            ImGuiUtils.AlignCentered(btnW, availW);
+            if (ImGui.Button("Open Crafting Log", new(btnW, 0)))
                 Plugin.Plugin.OpenCraftingLog();
-            ImGui.SameLine();
-            if (ImGui.Button(text4))
+            ImGuiUtils.AlignCentered(btnW, availW);
+            Theme.PushPrimaryButton();
+            if (ImGui.Button("Open Macro Editor", new(btnW, 0)))
                 OpenEditor(null);
+            Theme.PopPrimaryButton();
         }
     }
 
@@ -170,7 +222,7 @@ public sealed class MacroList : Window, IDisposable
         disabled.Dispose();
 
         ImGui.SameLine();
-        var pageText = $"Page {currentPage + 1} / {totalPages} ({sortedMacros.Count} macros)";
+        var pageText = $"Page {currentPage + 1} / {totalPages} · {sortedMacros.Count} macros";
         var textWidth = ImGui.CalcTextSize(pageText).X;
         ImGui.SetCursorPosX((availWidth - textWidth) / 2f);
         ImGui.TextUnformatted(pageText);
@@ -193,87 +245,110 @@ public sealed class MacroList : Window, IDisposable
 
         var stateNullable = GetMacroState(macro);
 
-        using var panel = ImRaii2.GroupPanel(macro.Name, width - ImGui.GetStyle().ItemSpacing.X * 2, out var availWidth);
+        using var panel = ImRaii2.GroupPanel(macro.Name, width - ImGui.GetStyle().ItemSpacing.X * 2, out var availWidth, accentLabel: false);
         var stepsAvailWidthOffset = width - availWidth;
         var spacing = ImGui.GetStyle().ItemSpacing.Y;
         var miniRowHeight = (windowHeight - spacing) / 2f;
 
-        using var table = ImRaii.Table("table", stateNullable.HasValue ? 3 : 2, ImGuiTableFlags.BordersInnerV);
-        if (table)
+        using (var table = ImRaii.Table("table", stateNullable.HasValue ? 3 : 2, ImGuiTableFlags.BordersInnerV))
         {
-            if (stateNullable.HasValue)
-                ImGui.TableSetupColumn("stats", ImGuiTableColumnFlags.WidthFixed, 0);
-            ImGui.TableSetupColumn("actions", ImGuiTableColumnFlags.WidthFixed, 0);
-            ImGui.TableSetupColumn("steps", ImGuiTableColumnFlags.WidthStretch, 0);
-
-            ImGui.TableNextRow(ImGuiTableRowFlags.None, windowHeight);
-            if (stateNullable is { } state)
+            if (table)
             {
-                ImGui.TableNextColumn();
-                ImGuiUtils.DrawMacroStatArcs(state, windowHeight, _plugin.Configuration.ShowOptimalMacroStat);
-            }
+                if (stateNullable.HasValue)
+                    ImGui.TableSetupColumn("stats", ImGuiTableColumnFlags.WidthFixed, 0);
+                ImGui.TableSetupColumn("actions", ImGuiTableColumnFlags.WidthFixed, 0);
+                ImGui.TableSetupColumn("steps", ImGuiTableColumnFlags.WidthStretch, 0);
 
-            ImGui.TableNextColumn();
-            {
-                if (ImGuiUtils.IconButtonSquare(FontAwesomeIcon.Edit, miniRowHeight))
-                    OpenEditor(macro);
-                if (ImGui.IsItemHovered())
-                    ImGuiUtils.Tooltip("Open in Macro Editor");
-                ImGui.SameLine(0, spacing);
-                if (ImGuiUtils.IconButtonSquare(FontAwesomeIcon.PencilAlt, miniRowHeight))
-                    ShowRenamePopup(macro);
-                DrawRenamePopup(macro);
-                if (ImGui.IsItemHovered())
-                    ImGuiUtils.Tooltip("Rename");
-
-                if (ImGuiUtils.IconButtonSquare(FontAwesomeIcon.Paste, miniRowHeight))
-                    MacroCopy.Copy(macro.Actions, _plugin);
-                if (ImGui.IsItemHovered())
-                    ImGuiUtils.Tooltip("Copy to Clipboard");
-                ImGui.SameLine(0, spacing);
-                using (var _disabled = ImRaii.Disabled(!ImGui.GetIO().KeyShift))
+                ImGui.TableNextRow(ImGuiTableRowFlags.None, windowHeight);
+                if (stateNullable is { } state)
                 {
-                    if (ImGuiUtils.IconButtonSquare(FontAwesomeIcon.Trash, miniRowHeight))
-                        _plugin.MacroRepository.Remove(macro);
+                    ImGui.TableNextColumn();
+                    ImGuiUtils.DrawMacroStatArcs(state, windowHeight);
                 }
-                if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-                    ImGuiUtils.Tooltip("Delete (Hold Shift)");
-            }
 
-            ImGui.TableNextColumn();
-            {
-                var itemsPerRow = (int)MathF.Floor((ImGui.GetContentRegionAvail().X - stepsAvailWidthOffset + spacing * 2) / (miniRowHeight + spacing));
-                var itemCount = macro.Actions.Count;
-                for (var i = 0; i < itemsPerRow * 2; i++)
+                ImGui.TableNextColumn();
                 {
-                    if (i % itemsPerRow != 0)
-                        ImGui.SameLine(0, spacing);
-                    if (i < itemCount)
+                    if (ImGuiUtils.IconButtonSquare(FontAwesomeIcon.Edit, miniRowHeight))
+                        OpenEditor(macro);
+                    if (ImGui.IsItemHovered())
+                        ImGuiUtils.Tooltip("Open in Macro Editor");
+                    ImGui.SameLine(0, spacing);
+                    if (ImGuiUtils.IconButtonSquare(FontAwesomeIcon.PencilAlt, miniRowHeight))
+                        ShowRenamePopup(macro);
+                    DrawRenamePopup(macro);
+                    if (ImGui.IsItemHovered())
+                        ImGuiUtils.Tooltip("Rename");
+
+                    if (ImGuiUtils.IconButtonSquare(FontAwesomeIcon.Paste, miniRowHeight))
+                        MacroCopy.Copy(macro.Actions, _plugin);
+                    if (ImGui.IsItemHovered())
+                        ImGuiUtils.Tooltip("Copy to Clipboard");
+                    ImGui.SameLine(0, spacing);
+                    Theme.PushDangerButton();
+                    using (var _disabled = ImRaii.Disabled(!ImGui.GetIO().KeyShift))
                     {
-                        var shouldShowMore = i + 1 == itemsPerRow * 2 && i + 1 < itemCount;
-                        if (!shouldShowMore)
+                        if (ImGuiUtils.IconButtonSquare(FontAwesomeIcon.Trash, miniRowHeight))
+                            _plugin.MacroRepository.Remove(macro);
+                    }
+                    Theme.PopDangerButton();
+                    if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                        ImGuiUtils.Tooltip("Delete (Hold Shift)");
+                }
+
+                ImGui.TableNextColumn();
+                {
+                    var itemsPerRow = (int)MathF.Floor((ImGui.GetContentRegionAvail().X - stepsAvailWidthOffset + spacing * 2) / (miniRowHeight + spacing));
+                    var itemCount = macro.Actions.Count;
+                    for (var i = 0; i < itemsPerRow * 2; i++)
+                    {
+                        if (i % itemsPerRow != 0)
+                            ImGui.SameLine(0, spacing);
+                        if (i < itemCount)
                         {
-                            ImGui.Image(macro.Actions[i].GetIcon(RecipeData!.ClassJob).Handle, new(miniRowHeight));
-                            if (ImGui.IsItemHovered())
-                                ImGuiUtils.Tooltip(macro.Actions[i].GetName(RecipeData!.ClassJob));
+                            var shouldShowMore = i + 1 == itemsPerRow * 2 && i + 1 < itemCount;
+                            if (!shouldShowMore)
+                            {
+                                ImGui.Image(macro.Actions[i].GetIcon(RecipeData!.ClassJob).Handle, new(miniRowHeight));
+                                if (ImGui.IsItemHovered())
+                                    ImGuiUtils.Tooltip(macro.Actions[i].GetName(RecipeData!.ClassJob));
+                            }
+                            else
+                            {
+                                var amtMore = itemCount - itemsPerRow * 2;
+                                var pos = ImGui.GetCursorPos();
+                                ImGui.Image(macro.Actions[i].GetIcon(RecipeData!.ClassJob).Handle, new(miniRowHeight), default, Vector2.One, new(1, 1, 1, .5f));
+                                if (ImGui.IsItemHovered())
+                                    ImGuiUtils.Tooltip($"{macro.Actions[i].GetName(RecipeData!.ClassJob)}\nand {amtMore} more");
+                                ImGui.SetCursorPos(pos);
+                                ImGui.GetWindowDrawList().AddRectFilled(ImGui.GetCursorScreenPos(), ImGui.GetCursorScreenPos() + new Vector2(miniRowHeight), ImGui.GetColorU32(ImGuiCol.FrameBg), miniRowHeight / 8f);
+                                ImGui.GetWindowDrawList().AddTextClippedEx(ImGui.GetCursorScreenPos(), ImGui.GetCursorScreenPos() + new Vector2(miniRowHeight), $"+{amtMore}", null, new(.5f), null);
+                            }
                         }
                         else
-                        {
-                            var amtMore = itemCount - itemsPerRow * 2;
-                            var pos = ImGui.GetCursorPos();
-                            ImGui.Image(macro.Actions[i].GetIcon(RecipeData!.ClassJob).Handle, new(miniRowHeight), default, Vector2.One, new(1, 1, 1, .5f));
-                            if (ImGui.IsItemHovered())
-                                ImGuiUtils.Tooltip($"{macro.Actions[i].GetName(RecipeData!.ClassJob)}\nand {amtMore} more");
-                            ImGui.SetCursorPos(pos);
-                            ImGui.GetWindowDrawList().AddRectFilled(ImGui.GetCursorScreenPos(), ImGui.GetCursorScreenPos() + new Vector2(miniRowHeight), ImGui.GetColorU32(ImGuiCol.FrameBg), miniRowHeight / 8f);
-                            ImGui.GetWindowDrawList().AddTextClippedEx(ImGui.GetCursorScreenPos(), ImGui.GetCursorScreenPos() + new Vector2(miniRowHeight), $"+{amtMore}", null, new(.5f), null);
-                        }
+                            ImGui.Dummy(new(miniRowHeight));
                     }
-                    else
-                        ImGui.Dummy(new(miniRowHeight));
                 }
             }
         }
+
+        // Footer badges
+        if (stateNullable is { } footerState && RecipeData != null)
+        {
+            var maxProgress = RecipeData.RecipeInfo.MaxProgress;
+            var maxQuality = RecipeData.RecipeInfo.MaxQuality;
+            if (maxProgress > 0)
+            {
+                var pct = (int)MathF.Round(footerState.Progress * 100f / maxProgress);
+                ImGuiUtils.DrawBadgePill($"{pct}% Progress", Colors.Progress);
+                ImGui.SameLine(0, spacing);
+            }
+            if (maxQuality > 0)
+            {
+                ImGuiUtils.DrawBadgePill($"{footerState.HQPercent}% HQ", Colors.HQ);
+                ImGui.SameLine(0, spacing);
+            }
+        }
+        ImGuiUtils.DrawBadgePill($"{macro.Actions.Count} steps", Colors.TextMuted);
     }
 
     private string popupMacroName = string.Empty;

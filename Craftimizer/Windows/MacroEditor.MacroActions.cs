@@ -20,51 +20,58 @@ public sealed partial class MacroEditor
     {
         var height = ImGui.GetFrameHeight();
         var spacing = ImGui.GetStyle().ItemSpacing.X;
-        var width = availWidth - ((spacing + height) * (3 + (DefaultActions.Length > 0 ? 1 : 0))); // small buttons at the end
-        var halfWidth = (width - spacing) / 2f;
-        var quarterWidth = (halfWidth - spacing) / 2f;
+        var hasMacro = Macro.Count > 0;
+        var hasDefault = DefaultActions.Length > 0;
 
-        using (var _disabled = ImRaii.Disabled(SolverRunning))
+        var smallCount = 2 + (hasDefault ? 1 : 0) + (hasMacro ? 1 : 0);
+        var width = availWidth - ((spacing + height) * smallCount);
+        var halfWidth = (width - spacing) / 2f;
+
+        using (var _disabled = ImRaii.Disabled(SolverRunning || !hasMacro))
         {
-            if (MacroSetter != null)
+            if (ImGui.Button("Save Macro", new(halfWidth, height)))
             {
-                if (ImGui.Button("Save", new(quarterWidth, height)))
+                if (MacroSetter != null)
                     SaveMacro();
-                ImGui.SameLine();
-                if (ImGui.Button("Save As", new(quarterWidth, height)))
-                    ShowSaveAsPopup();
-            }
-            else
-            {
-                if (ImGui.Button("Save", new(halfWidth, height)))
+                else
                     ShowSaveAsPopup();
             }
         }
         DrawSaveAsPopup();
+
         ImGui.SameLine();
+
         if (SolverRunning)
         {
             if (SolverTask?.Cancelling ?? false)
             {
                 using var _disabled = ImRaii.Disabled();
-                ImGui.Button("Stopping", new(halfWidth, height));
+                ImGui.Button("Stopping...", new(halfWidth, height));
             }
             else
             {
+                Theme.PushPrimaryButton();
                 if (ImGui.Button("Stop", new(halfWidth, height)))
                     SolverTask?.Cancel();
+                Theme.PopPrimaryButton();
             }
         }
         else
         {
-            if (ImGui.Button(SolverStartStepCount.HasValue ? "Regenerate" : "Generate", new(halfWidth, height)))
+            if (!hasMacro)
+                Theme.PushPrimaryButton();
+            if (ImGui.Button("Solve & Replace", new(halfWidth, height)))
                 CalculateBestMacro();
+            if (!hasMacro)
+                Theme.PopPrimaryButton();
         }
+
         ImGui.SameLine();
         if (ImGuiUtils.IconButtonSquare(FontAwesomeIcon.Paste))
             MacroCopy.Copy(Macro.Actions.ToArray(), _plugin);
         if (ImGui.IsItemHovered())
             ImGuiUtils.Tooltip("Copy to Clipboard");
+
         ImGui.SameLine();
         using (var _disabled = ImRaii.Disabled(SolverRunning))
         {
@@ -74,9 +81,10 @@ public sealed partial class MacroEditor
         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             ImGuiUtils.Tooltip("Import Macro");
         DrawImportPopup();
-        ImGui.SameLine();
-        if (DefaultActions.Length > 0)
+
+        if (hasDefault)
         {
+            ImGui.SameLine();
             using (var _disabled = ImRaii.Disabled(SolverRunning))
             {
                 if (ImGuiUtils.IconButtonSquare(FontAwesomeIcon.Undo))
@@ -90,17 +98,23 @@ public sealed partial class MacroEditor
             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
                 ImGuiUtils.Tooltip("Reset");
         }
-        ImGui.SameLine();
-        using (var _disabled = ImRaii.Disabled(SolverRunning))
+
+        if (hasMacro)
         {
-            if (ImGuiUtils.IconButtonSquare(FontAwesomeIcon.Trash))
+            ImGui.SameLine();
+            Theme.PushDangerButton();
+            using (var _disabled = ImRaii.Disabled(SolverRunning))
             {
-                SolverStartStepCount = null;
-                Macro.Clear();
+                if (ImGuiUtils.IconButtonSquare(FontAwesomeIcon.Trash))
+                {
+                    SolverStartStepCount = null;
+                    Macro.Clear();
+                }
             }
+            Theme.PopDangerButton();
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                ImGuiUtils.Tooltip("Clear");
         }
-        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-            ImGuiUtils.Tooltip("Clear");
     }
 
     private void ShowSaveAsPopup()

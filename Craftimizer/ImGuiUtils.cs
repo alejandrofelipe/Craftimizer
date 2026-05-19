@@ -28,7 +28,7 @@ internal static class ImGuiUtils
     // width = 0 -> size to content
     // returns available width (better since it accounts for the right side padding)
     // ^ only useful if width = -1
-    public static float BeginGroupPanel(string name, float width)
+    public static float BeginGroupPanel(string name, float width, bool accentLabel = true)
     {
         ImGui.PushID(name);
 
@@ -62,7 +62,10 @@ internal static class ImGuiUtils
                 ImGui.SameLine(0, 0);
                 var textFrameHeight = ImGui.GetFrameHeight();
                 ImGui.AlignTextToFramePadding();
-                ImGui.TextUnformatted(name);
+                {
+                    using var labelColor = accentLabel ? ImRaii.PushColor(ImGuiCol.Text, Colors.ActionBuff) : null;
+                    ImGui.TextUnformatted(name);
+                }
                 GroupPanelLabelStack.Push((ImGui.GetItemRectMin(), ImGui.GetItemRectMax(), textFrameHeight / 2f)); // push rect to stack
                 ImGui.SameLine(0, 0);
                 ImGui.Dummy(new Vector2(0f, textFrameHeight + itemSpacing.Y)); // shifts content by fh + is.y
@@ -136,155 +139,51 @@ internal static class ImGuiUtils
         ImGui.PopID();
     }
 
-    private static Vector2 UnitCircle(float theta)
-    {
-        var (s, c) = MathF.SinCos(theta);
-        // SinCos positive y is downwards, but we want it upwards for ImGui
-        return new Vector2(c, -s);
-    }
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static float Lerp(float a, float b, float t) =>
         MathF.FusedMultiplyAdd(b - a, t, a);
 
-    private readonly record struct ArcEdge(float Angle, Vector2 Point)
+    public static void DrawMacroStatArcs(in SimulationState state, float windowHeight, bool asGrid = false)
     {
-        public ArcEdge(float angle) : this(angle, UnitCircle(angle)) { }
-    }
+        var style    = ImGui.GetStyle();
+        var spacingX = style.ItemSpacing.X;
+        var spacingY = style.ItemSpacing.Y;
+        var origin   = ImGui.GetCursorScreenPos();
+        var dl       = ImGui.GetWindowDrawList();
 
-    private static void ArcSegment(Vector2 o, ArcEdge prev, ArcEdge cur, ArcEdge? next, float radius, float ratio, uint color)
-    {
-        var d = ImGui.GetWindowDrawList();
-
-        d.PathLineTo(o + cur.Point * radius);
-        d.PathLineTo(o + prev.Point * radius);
-        d.PathLineTo(o + prev.Point * radius * ratio);
-        d.PathLineTo(o + cur.Point * radius * ratio);
-        if (next is { } nextValue)
-            d.PathLineTo(o + nextValue.Point * radius);
-        d.PathFillConvex(color);
-    }
-
-    public static void Arc(float startAngle, float endAngle, float radius, float ratio, uint backgroundColor, uint filledColor, bool addDummy = true)
-    {
-        // Fix normals when drawing (for antialiasing)
-        if (startAngle > endAngle)
-            (startAngle, endAngle) = (endAngle, startAngle);
-
-        // Origin of circle
-        var offset = ImGui.GetCursorScreenPos() + new Vector2(radius);
-
-        // Number of segments to draw
-        var segments = ImGui.GetWindowDrawList()._CalcCircleAutoSegmentCount(radius);
-        // Angle between each segment
-        var incrementAngle = MathF.Tau / segments;
-        // Whether the arc is a full circle (no background or all background)
-        var isFullCircle = (endAngle - startAngle) % MathF.Tau == 0;
-
-        var end = new ArcEdge(endAngle);
-        var prev = new ArcEdge(startAngle);
-        for (var i = 1; i <= segments; ++i)
+        float arcSize;
+        if (asGrid)
         {
-            var cur = new ArcEdge(startAngle + incrementAngle * i);
-            var next = new ArcEdge(startAngle + incrementAngle * (i + 1));
-
-            // full segment is background
-            if (prev.Angle >= end.Angle)
-            {
-                // don't overlap with the first segment
-                if (i == segments && !isFullCircle)
-                    ArcSegment(offset, prev, cur, null, radius, ratio, backgroundColor);
-                else
-                    ArcSegment(offset, prev, cur, next, radius, ratio, backgroundColor);
-            }
-            // segment is partially filled
-            else if (cur.Angle > end.Angle && !isFullCircle)
-            {
-                // we split the drawing in two
-                ArcSegment(offset, prev, end, null, radius, ratio, filledColor);
-                if (i == segments)
-                    ArcSegment(offset, end, cur, null, radius, ratio, backgroundColor);
-                else
-                    ArcSegment(offset, end, cur, next, radius, ratio, backgroundColor);
-                // set the previous segment to end
-                cur = end;
-            }
-            // full segment is filled
-            else
-            {
-                // if the next segment will be partially filled, the next segment will be the end
-                if (next.Angle > end.Angle && !isFullCircle)
-                    ArcSegment(offset, prev, cur, end, radius, ratio, filledColor);
-                else
-                    ArcSegment(offset, prev, cur, next, radius, ratio, filledColor);
-            }
-            prev = cur;
-        }
-
-        if (addDummy)
-            ImGui.Dummy(new Vector2(radius * 2));
-    }
-
-    public static void ArcProgress(float value, float radius, float ratio, uint backgroundColor, uint filledColor)
-    {
-        float startAngle, endAngle;
-
-        // https://github.com/ocornut/imgui/commit/c895e987adf746a997b655c64a6a8916c549ff6f#diff-d750e175eb584ba76bc560b8e54cf113ccbb31dd33f75078c1588925e197a3afR1304-R1310
-        if (value < 0)
-        {
-            const float ArcSize = 0.15f;
-            startAngle = -value % 1;
-            endAngle = startAngle + ArcSize;
-
-            startAngle = float.Lerp(MathF.PI / 2, -3 * MathF.PI / 2, startAngle);
-            endAngle = float.Lerp(MathF.PI / 2, -3 * MathF.PI / 2, endAngle);
+            arcSize = (windowHeight - spacingY) / 2f;
+            ImGui.Dummy(new Vector2(arcSize * 2 + spacingX, arcSize * 2 + spacingY));
         }
         else
         {
-            startAngle = MathF.PI / 2;
-            endAngle = MathF.PI / 2 - MathF.Tau * Math.Clamp(value, 0, 1);
+            arcSize = (windowHeight - spacingX) / 2f;
+            ImGui.Dummy(new Vector2(arcSize * 4 + spacingX * 3, arcSize));
         }
 
-        Arc(startAngle, endAngle, radius, ratio, backgroundColor, filledColor);
-    }
-
-    public static void DrawMacroStatArcs(in SimulationState state, float windowHeight, bool showOptimalStat)
-    {
-        var spacing = ImGui.GetStyle().ItemSpacing.Y;
-        var miniRowHeight = (windowHeight - spacing) / 2f;
-        var bgColor = ImGui.GetColorU32(ImGuiCol.TableBorderLight);
-
-        if (showOptimalStat)
+        void Arc(int col, int row, float frac, Vector4 color, string tip)
         {
-            if (state.Progress >= state.Input.Recipe.MaxProgress && state.Input.Recipe.MaxQuality > 0)
-            {
-                ArcProgress((float)state.Quality / state.Input.Recipe.MaxQuality, windowHeight / 2f, .5f, bgColor, ImGui.GetColorU32(Colors.Quality));
-                if (ImGui.IsItemHovered())
-                    Tooltip($"Quality: {state.Quality} / {state.Input.Recipe.MaxQuality}");
-            }
-            else
-            {
-                ArcProgress((float)state.Progress / state.Input.Recipe.MaxProgress, windowHeight / 2f, .5f, bgColor, ImGui.GetColorU32(Colors.Progress));
-                if (ImGui.IsItemHovered())
-                    Tooltip($"Progress: {state.Progress} / {state.Input.Recipe.MaxProgress}");
-            }
+            var pos = new Vector2(origin.X + col * (arcSize + spacingX), origin.Y + row * (arcSize + spacingY));
+            DrawStatArc(dl, pos, arcSize, Math.Clamp(frac, 0f, 1f), color);
+            if (ImGui.IsMouseHoveringRect(pos, pos + new Vector2(arcSize)))
+                Tooltip(tip);
+        }
+
+        if (asGrid)
+        {
+            Arc(0, 0, state.Input.Recipe.MaxProgress   > 0 ? (float)state.Progress   / state.Input.Recipe.MaxProgress   : 0f, Colors.Progress,   $"Progress: {state.Progress} / {state.Input.Recipe.MaxProgress}");
+            Arc(1, 0, state.Input.Recipe.MaxQuality    > 0 ? (float)state.Quality    / state.Input.Recipe.MaxQuality    : 0f, Colors.Quality,    $"Quality: {state.Quality} / {state.Input.Recipe.MaxQuality}");
+            Arc(0, 1, state.Input.Recipe.MaxDurability > 0 ? (float)state.Durability / state.Input.Recipe.MaxDurability : 0f, Colors.Durability, $"Durability: {state.Durability} / {state.Input.Recipe.MaxDurability}");
+            Arc(1, 1, state.Input.Stats.CP             > 0 ? (float)state.CP         / state.Input.Stats.CP             : 0f, Colors.CP,         $"CP: {state.CP} / {state.Input.Stats.CP}");
         }
         else
         {
-            ArcProgress((float)state.Progress / state.Input.Recipe.MaxProgress, miniRowHeight / 2f, .5f, bgColor, ImGui.GetColorU32(Colors.Progress));
-            if (ImGui.IsItemHovered())
-                Tooltip($"Progress: {state.Progress} / {state.Input.Recipe.MaxProgress}");
-            ImGui.SameLine(0, spacing);
-            ArcProgress((float)state.Quality / state.Input.Recipe.MaxQuality, miniRowHeight / 2f, .5f, bgColor, ImGui.GetColorU32(Colors.Quality));
-            if (ImGui.IsItemHovered())
-                Tooltip($"Quality: {state.Quality} / {state.Input.Recipe.MaxQuality}");
-            ArcProgress((float)state.Durability / state.Input.Recipe.MaxDurability, miniRowHeight / 2f, .5f, bgColor, ImGui.GetColorU32(Colors.Durability));
-            if (ImGui.IsItemHovered())
-                Tooltip($"Remaining Durability: {state.Durability} / {state.Input.Recipe.MaxDurability}");
-            ImGui.SameLine(0, spacing);
-            ArcProgress((float)state.CP / state.Input.Stats.CP, miniRowHeight / 2f, .5f, bgColor, ImGui.GetColorU32(Colors.CP));
-            if (ImGui.IsItemHovered())
-                Tooltip($"Remaining CP: {state.CP} / {state.Input.Stats.CP}");
+            Arc(0, 0, state.Input.Recipe.MaxProgress   > 0 ? (float)state.Progress   / state.Input.Recipe.MaxProgress   : 0f, Colors.Progress,   $"Progress: {state.Progress} / {state.Input.Recipe.MaxProgress}");
+            Arc(1, 0, state.Input.Recipe.MaxQuality    > 0 ? (float)state.Quality    / state.Input.Recipe.MaxQuality    : 0f, Colors.Quality,    $"Quality: {state.Quality} / {state.Input.Recipe.MaxQuality}");
+            Arc(2, 0, state.Input.Recipe.MaxDurability > 0 ? (float)state.Durability / state.Input.Recipe.MaxDurability : 0f, Colors.Durability, $"Durability: {state.Durability} / {state.Input.Recipe.MaxDurability}");
+            Arc(3, 0, state.Input.Stats.CP             > 0 ? (float)state.CP         / state.Input.Stats.CP             : 0f, Colors.CP,         $"CP: {state.CP} / {state.Input.Stats.CP}");
         }
     }
 
@@ -346,52 +245,6 @@ internal static class ImGuiUtils
         ImGui.TextUnformatted(condition.Name());
     }
 
-    // ── Solver Progress Bar ────────────────────────────────────────────────
-
-    /// <summary>
-    /// Draws a thin (3 px) progress bar styled for the solver:
-    /// <list type="bullet">
-    /// <item>Pass <see langword="null"/> for an indeterminate shimmer animation.</item>
-    /// <item>Pass a 0..1 float for a determinate fill.</item>
-    /// </list>
-    /// </summary>
-    public static void DrawSolverProgressBar(float? progress, Vector2 size)
-    {
-        var style = ImGui.GetStyle();
-        var pos = ImGui.GetCursorScreenPos();
-        var bbMin = pos;
-        var bbMax = pos + size;
-
-        ImGuiExtras.ItemSize(size, style.FramePadding.Y);
-        if (!ImGuiExtras.ItemAdd(new(bbMin.X, bbMin.Y, bbMax.X, bbMax.Y), 0))
-            return;
-
-        var drawList = ImGui.GetWindowDrawList();
-        var rounding = size.Y / 2f;
-        drawList.AddRectFilled(bbMin, bbMax, ImGui.GetColorU32(ImGuiCol.FrameBg), rounding);
-
-        if (progress is null)
-        {
-            // indeterminate: 35%-wide band sweeping from left to right over 1.5 s
-            const float bandFrac = 0.35f;
-            var t  = (float)(ImGui.GetTime() % 1.5 / 1.5);
-            var x0 = float.Lerp(bbMin.X - size.X * bandFrac, bbMax.X, t);
-            var x1 = x0 + size.X * bandFrac;
-            x0 = Math.Max(x0, bbMin.X);
-            x1 = Math.Min(x1, bbMax.X);
-            if (x1 > x0)
-                drawList.AddRectFilled(new Vector2(x0, bbMin.Y), new Vector2(x1, bbMax.Y),
-                    ImGui.GetColorU32(Colors.ActionBuff), rounding);
-        }
-        else
-        {
-            var frac = Math.Clamp(progress.Value, 0f, 1f);
-            if (frac > 0f)
-                drawList.AddRectFilled(bbMin, new Vector2(bbMin.X + size.X * frac, bbMax.Y),
-                    ImGui.GetColorU32(Colors.ActionBuff), rounding);
-        }
-    }
-
     /// <summary>
     /// Returns the size (in pixels) that a badge pill with the given text will occupy.
     /// </summary>
@@ -438,12 +291,12 @@ internal static class ImGuiUtils
             Tooltip(tooltip);
     }
 
-    public static void ProgressBar(float value, Vector2 size)
+    public static void ProgressBar(float value, Vector2 size, string? overlay = null)
     {
         var style = ImGui.GetStyle();
         var pos = ImGui.GetCursorScreenPos();
 
-        //size = ImGuiExtras.CalcItemSize(size, ImGui.CalcItemWidth(), ImGui.GetFontSize() + style.FramePadding.Y * 2.0f);
+        if (size.X <= 0) size = size with { X = ImGui.GetContentRegionAvail().X + size.X };
 
         var bbMin = pos;
         var bbMax = pos + size;
@@ -467,7 +320,50 @@ internal static class ImGuiUtils
         bbMin += new Vector2(style.FrameBorderSize);
         bbMax -= new Vector2(style.FrameBorderSize);
 
-        ImGuiExtras.RenderRectFilledRangeH(ImGui.GetWindowDrawList(), new(bbMin.X, bbMin.Y, bbMax.X, bbMax.Y), ImGui.GetColorU32(ImGuiCol.PlotHistogram), bar_begin, bar_end, style.FrameRounding);
+        var dl = ImGui.GetWindowDrawList();
+        ImGuiExtras.RenderRectFilledRangeH(dl, new(bbMin.X, bbMin.Y, bbMax.X, bbMax.Y), ImGui.GetColorU32(ImGuiCol.PlotHistogram), bar_begin, bar_end, style.FrameRounding);
+
+        if (overlay != null)
+        {
+            var textSz  = ImGui.CalcTextSize(overlay);
+            var textPos = new Vector2(bbMin.X + (bbMax.X - bbMin.X - textSz.X) * 0.5f, bbMin.Y + (bbMax.Y - bbMin.Y - textSz.Y) * 0.5f);
+            dl.AddText(textPos, ImGui.GetColorU32(ImGuiCol.Text), overlay);
+        }
+    }
+
+    // Draws a partial circular arc (280° sweep, gap at bottom) into the given draw list.
+    // screenPos is the top-left of the bounding square; size is the side length.
+    public static void DrawStatArc(ImDrawListPtr drawList, Vector2 screenPos, float size, float frac, Vector4 color)
+    {
+        // 130° × π/180 ≈ 2.269 — arc starts bottom-left, sweeps clockwise through top to bottom-right.
+        // 280° × π/180 ≈ 4.887 — 80° gap centred at the bottom.
+        const float StartAngle = 2.269f;
+        const float SweepAngle = 4.887f;
+
+        var center  = screenPos + new Vector2(size * 0.5f, size * 0.5f);
+        var strokeW = MathF.Max(2f, size * 0.16f);
+        var radius  = size * 0.5f - strokeW * 0.5f - 1f;
+        var capR    = strokeW * 0.5f;
+
+        var trackColor = ImGui.GetColorU32(color with { W = 0.20f });
+        var fillColor  = ImGui.GetColorU32(color);
+
+        // Track arc + rounded end caps
+        drawList.PathArcTo(center, radius, StartAngle, StartAngle + SweepAngle, 32);
+        drawList.PathStroke(trackColor, ImDrawFlags.None, strokeW);
+        drawList.AddCircleFilled(center + new Vector2(MathF.Cos(StartAngle)              * radius, MathF.Sin(StartAngle)              * radius), capR, trackColor);
+        drawList.AddCircleFilled(center + new Vector2(MathF.Cos(StartAngle + SweepAngle) * radius, MathF.Sin(StartAngle + SweepAngle) * radius), capR, trackColor);
+
+        if (frac > 0.005f)
+        {
+            var fillEnd = StartAngle + SweepAngle * MathF.Min(frac, 1f);
+
+            // Fill arc + rounded end caps (start cap overrides track cap with fill color)
+            drawList.PathArcTo(center, radius, StartAngle, fillEnd, 32);
+            drawList.PathStroke(fillColor, ImDrawFlags.None, strokeW);
+            drawList.AddCircleFilled(center + new Vector2(MathF.Cos(StartAngle) * radius, MathF.Sin(StartAngle) * radius), capR, fillColor);
+            drawList.AddCircleFilled(center + new Vector2(MathF.Cos(fillEnd)    * radius, MathF.Sin(fillEnd)    * radius), capR, fillColor);
+        }
     }
 
     public sealed class ViolinData

@@ -41,8 +41,6 @@ public sealed partial class MacroEditor
         var oldStartingQuality = StartingQuality;
         var adjustedJobLevel = RecipeData.AdjustedJobLevel;
 
-        ImGuiUtils.TextCentered("Recipe");
-
         var textStars = new string('★', RecipeData!.Table.Stars);
 
         string? textLevel = null;

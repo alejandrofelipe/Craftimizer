@@ -61,12 +61,3 @@ $updated = $content -replace "<Version>$([regex]::Escape($old))</Version>", "<Ve
 Set-Content $csproj $updated -NoNewline
 
 Write-Host "Version bumped: $old  →  $new" -ForegroundColor Green
-
-# --- rename installedPlugins dir if it exists ---
-$pluginsBase = "$env:APPDATA\XIVLauncher\installedPlugins\Craftimizer"
-$oldDir = "$pluginsBase\$old"
-$newDir = "$pluginsBase\$new"
-if (Test-Path $oldDir) {
-    Rename-Item $oldDir $newDir
-    Write-Host "Renamed installedPlugins folder: $old  →  $new" -ForegroundColor DarkGray
-}

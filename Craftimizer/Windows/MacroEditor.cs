@@ -202,6 +202,13 @@ public sealed partial class MacroEditor : Window, IDisposable
             }
         }
         ImGui.SetNextWindowSizeConstraints(new Vector2(height, MinWindowHeight), new Vector2(float.PositiveInfinity));
+        Theme.Push();
+    }
+
+    public override void PostDraw()
+    {
+        Theme.Pop();
+        base.PostDraw();
     }
 
     public override void OnClose()

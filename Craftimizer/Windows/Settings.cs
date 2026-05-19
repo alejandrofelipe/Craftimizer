@@ -63,8 +63,9 @@ public sealed class Settings : Window, IDisposable
         return ImGuiTabItemFlags.None;
     }
 
-    private static void DrawOption(string label, string tooltip, bool val, Action<bool> setter, ref bool isDirty)
+    private static void DrawOption(string label, string tooltip, bool val, Action<bool> setter, ref bool isDirty, string? description = null)
     {
+        var startX = ImGui.GetCursorPosX();
         if (ImGui.Checkbox(label, ref val))
         {
             setter(val);
@@ -72,6 +73,21 @@ public sealed class Settings : Window, IDisposable
         }
         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             ImGuiUtils.TooltipWrapped(tooltip);
+        if (description != null)
+        {
+            ImGui.SetCursorPosX(startX + ImGui.GetFrameHeight() + ImGui.GetStyle().ItemInnerSpacing.X);
+            using (ImRaii.PushColor(ImGuiCol.Text, Colors.TextMuted))
+                ImGui.TextUnformatted(description);
+        }
+    }
+
+    private static void DrawSectionTitle(string title)
+    {
+        ImGuiHelpers.ScaledDummy(4);
+        using (ImRaii.PushColor(ImGuiCol.Text, Colors.TextMuted))
+            ImGui.TextUnformatted(title);
+        ImGui.Separator();
+        ImGuiHelpers.ScaledDummy(2);
     }
 
     private static void DrawOption<T>(string label, string tooltip, T value, T min, T max, Action<T> setter, ref bool isDirty) where T : struct, INumber<T>
@@ -213,6 +229,18 @@ public sealed class Settings : Window, IDisposable
             _ => "Unknown"
         };
 
+    public override void PreDraw()
+    {
+        base.PreDraw();
+        Theme.Push();
+    }
+
+    public override void PostDraw()
+    {
+        Theme.Pop();
+        base.PostDraw();
+    }
+
     public override void Draw()
     {
         if (ImGui.BeginTabBar("settingsTabBar"))
@@ -238,6 +266,8 @@ public sealed class Settings : Window, IDisposable
 
         var isDirty = false;
 
+        DrawSectionTitle("GENERAL");
+
         DrawOption(
             "Enable Synthesis Helper",
             "Adds a helper next to your synthesis window to help solve for the best craft. " +
@@ -245,7 +275,8 @@ public sealed class Settings : Window, IDisposable
             "which actions you take.",
             Config.EnableSynthHelper,
             v => Config.EnableSynthHelper = v,
-            ref isDirty
+            ref isDirty,
+            "Adds a live overlay during crafting to suggest optimal next actions."
         );
 
         DrawOption(
@@ -255,7 +286,8 @@ public sealed class Settings : Window, IDisposable
             "hidden.",
             Config.ShowOptimalMacroStat,
             v => Config.ShowOptimalMacroStat = v,
-            ref isDirty
+            ref isDirty,
+            "Shows HQ% or progress — whichever is most relevant for each macro."
         );
 
         DrawOption(
@@ -264,7 +296,8 @@ public sealed class Settings : Window, IDisposable
             "before suggesting any specialist actions.",
             Config.CheckDelineations,
             v => Config.CheckDelineations = v,
-            ref isDirty
+            ref isDirty,
+            "Checks inventory before the solver suggests specialist job actions."
         );
 
         DrawOption(
@@ -912,13 +945,16 @@ public sealed class Settings : Window, IDisposable
 
         var isDirty = false;
 
+        DrawSectionTitle("GENERAL");
+
         DrawOption(
             "Pin Helper Window",
             "Pins the helper window to the right of your crafting log. Disabling this will " +
             "allow you to move it around.",
             Config.PinRecipeNoteToWindow,
             v => Config.PinRecipeNoteToWindow = v,
-            ref isDirty
+            ref isDirty,
+            "Keeps the helper panel attached to the right of your crafting log."
         );
 
         DrawOption(
@@ -927,7 +963,8 @@ public sealed class Settings : Window, IDisposable
             "a new craft, preventing the solver from running automatically.",
             Config.CollapseSynthHelper,
             v => Config.CollapseSynthHelper = v,
-            ref isDirty
+            ref isDirty,
+            "Collapses the helper when switching recipes, preventing auto-solve."
         );
 
         DrawOption(
@@ -939,7 +976,8 @@ public sealed class Settings : Window, IDisposable
             "provides a button to allow you to manually suggest a macro only when you need it.",
             Config.SuggestMacroAutomatically,
             v => Config.SuggestMacroAutomatically = v,
-            ref isDirty
+            ref isDirty,
+            "Auto-generates a macro when a recipe changes. May cause frame drops."
         );
 
         DrawOption(
@@ -950,7 +988,8 @@ public sealed class Settings : Window, IDisposable
             "and are always cached to reduce server load.",
             Config.ShowCommunityMacros,
             v => Config.ShowCommunityMacros = v,
-            ref isDirty
+            ref isDirty,
+            "Fetches crowd-sourced macros from FFXIV Teamcraft for your recipe."
         );
 
         if (Config.ShowCommunityMacros)
@@ -962,13 +1001,12 @@ public sealed class Settings : Window, IDisposable
                 "This is turned off by default so you don't hammer their servers :)",
                 Config.SearchCommunityMacroAutomatically,
                 v => Config.SearchCommunityMacroAutomatically = v,
-                ref isDirty
+                ref isDirty,
+                "Searches automatically when navigating to a new recipe."
             );
         }
 
-        ImGuiHelpers.ScaledDummy(5);
-        ImGui.Separator();
-        ImGuiHelpers.ScaledDummy(5);
+        DrawSectionTitle("SOLVER CONFIGURATION");
 
         var solverConfig = Config.RecipeNoteSolverConfig;
         DrawSolverConfig(ref solverConfig, SolverConfig.RecipeNoteDefault, false, out var isSolverDirty);
@@ -992,6 +1030,8 @@ public sealed class Settings : Window, IDisposable
 
         var isDirty = false;
 
+        DrawSectionTitle("SOLVER CONFIGURATION");
+
         var solverConfig = Config.EditorSolverConfig;
         DrawSolverConfig(ref solverConfig, SolverConfig.EditorDefault, false, out var isSolverDirty);
         if (isSolverDirty)
@@ -1014,13 +1054,16 @@ public sealed class Settings : Window, IDisposable
 
         var isDirty = false;
 
+        DrawSectionTitle("GENERAL");
+
         DrawOption(
             "Pin Helper Window",
             "Pins the synthesis helper to the right of your synthesis window. Disabling this will " +
             "allow you to move it around.",
             Config.PinSynthHelperToWindow,
             v => Config.PinSynthHelperToWindow = v,
-            ref isDirty
+            ref isDirty,
+            "Keeps the helper anchored beside your synthesis window."
         );
 
         DrawOption(
@@ -1028,7 +1071,8 @@ public sealed class Settings : Window, IDisposable
             "Disables itself when an in-game macro is running.",
             Config.DisableSynthHelperOnMacro,
             v => Config.DisableSynthHelperOnMacro = v,
-            ref isDirty
+            ref isDirty,
+            "Pauses the overlay while an in-game macro is active."
         );
 
         DrawOption(
@@ -1037,7 +1081,8 @@ public sealed class Settings : Window, IDisposable
             "If a macro for that recipe already exists, it is only overwritten when the new result has higher quality.",
             Config.AutoSaveCraftMacro,
             v => Config.AutoSaveCraftMacro = v,
-            ref isDirty
+            ref isDirty,
+            "Saves the action sequence when a craft completes successfully."
         );
 
         DrawOption(
@@ -1047,7 +1092,8 @@ public sealed class Settings : Window, IDisposable
             "reliability trials (when hovering over the macro stats) are hidden.",
             Config.SynthHelperDisplayOnlyFirstStep,
             v => Config.SynthHelperDisplayOnlyFirstStep = v,
-            ref isDirty
+            ref isDirty,
+            "Reduces CPU usage by only simulating the next step by default."
         );
 
         DrawOption(
@@ -1057,7 +1103,8 @@ public sealed class Settings : Window, IDisposable
             "for things like combo actions and condition procs.",
             Config.SynthHelperAbilityAnts,
             v => Config.SynthHelperAbilityAnts = v,
-            ref isDirty
+            ref isDirty,
+            "Highlights the suggested next action on your hotbar."
         );
 
         DrawOption(
@@ -1082,9 +1129,7 @@ public sealed class Settings : Window, IDisposable
             ref isDirty
         );
 
-        ImGuiHelpers.ScaledDummy(5);
-        ImGui.Separator();
-        ImGuiHelpers.ScaledDummy(5);
+        DrawSectionTitle("SOLVER CONFIGURATION");
 
         var solverConfig = Config.SynthHelperSolverConfig;
         DrawSolverConfig(ref solverConfig, SolverConfig.SynthHelperDefault, true, out var isSolverDirty);

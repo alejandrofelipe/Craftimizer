@@ -23,8 +23,6 @@ public sealed partial class MacroEditor
     {
         var oldStats = CharacterStats;
 
-        ImGuiUtils.TextCentered("Crafter");
-
         var textClassName = RecipeData.ClassJob.GetAbbreviation();
         var textClassSize = AxisFont.CalcTextSize(textClassName);
 

@@ -97,6 +97,16 @@ public static unsafe class Gearsets
         };
     }
 
+    public static (CharacterStats Stats, GearsetItem[] Items)? TryComputeCurrentStats(int characterLevel, bool canUseManipulation)
+    {
+        var gearStats = CalculateGearsetCurrentStats();
+        var container = InventoryManager.Instance()->GetInventoryContainer(InventoryType.EquippedItems);
+        if (container == null)
+            return null;
+        var gearItems = GetGearsetItems(container);
+        return (CalculateCharacterStats(gearStats, gearItems, characterLevel, canUseManipulation), gearItems);
+    }
+
     public static CharacterStats CalculateCharacterStats(GearsetItem[] gearsetItems, int characterLevel, bool canUseManipulation) =>
         CalculateCharacterStats(CalculateGearsetStats(gearsetItems), gearsetItems, characterLevel, canUseManipulation);
 
