@@ -119,4 +119,32 @@ public class ActionSetTests
         foreach (var action in actions)
             Assert.IsTrue(counts.GetValueOrDefault(action) > 0);
     }
+
+    [TestMethod]
+    public void TestPopRandom()
+    {
+#if IS_DETERMINISTIC
+        Assert.Inconclusive("Craftimizer is currently built for determinism; all random actions are not actually random.");
+#endif
+
+        var actions = new[]
+        {
+            ActionType.BasicTouch,
+            ActionType.BasicSynthesis,
+            ActionType.GreatStrides,
+            ActionType.TrainedFinesse,
+        };
+
+        var set = new ActionSet();
+        foreach (var action in actions)
+            set.AddAction(action);
+
+        var popped = new List<ActionType>();
+        var rng = new Random(42);
+        while (!set.IsEmpty)
+            popped.Add(set.PopRandom(rng));
+
+        Assert.AreEqual(actions.Length, popped.Count);
+        CollectionAssert.AreEquivalent(actions, popped);
+    }
 }
