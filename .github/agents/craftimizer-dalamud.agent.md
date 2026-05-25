@@ -163,15 +163,42 @@ dotnet test Test/Craftimizer.Test.csproj
 # Use get_errors para listar warnings/errors do VS Code
 ```
 
-### 2. Atualizar Documentação
+### 2. Bump de Versão (ANTES do commit)
+
+**Escolha o tipo de bump baseado na mudança:**
+
+```powershell
+# Para BREAKING CHANGES (incompatibilidade com versão anterior)
+.\scripts\bump-version.ps1 -Type major    # X.0.0.0
+
+# Para NOVAS FUNCIONALIDADES (compatível, adiciona features)
+.\scripts\bump-version.ps1 -Type minor    # x.X.0.0
+
+# Para BUG FIXES (correções, sem novas features)
+.\scripts\bump-version.ps1 -Type patch    # x.x.X.0
+
+# Para BUILDS INCREMENTAIS (refactor, docs, chores)
+.\scripts\bump-version.ps1 -Type build    # x.x.x.X (padrão)
+```
+
+**Mapeamento commit type → bump type:**
+| Commit Type | Bump Type | Exemplo |
+|-------------|-----------|---------|
+| `feat(scope): ...` | `minor` | 2.9.4.31 → 2.10.0.0 |
+| `fix(scope): ...` | `patch` | 2.9.4.31 → 2.9.5.0 |
+| `feat!:` ou `BREAKING CHANGE:` | `major` | 2.9.4.31 → 3.0.0.0 |
+| `refactor:`, `docs:`, `chore:` | `build` | 2.9.4.31 → 2.9.4.32 |
+
+### 3. Atualizar Documentação
 - Atualizar arquivo de backlog correspondente (ex: `backlog/PROGRESS.md`)
 - Marcar tarefas concluídas com ✅
 - Adicionar notas sobre decisões de implementação
 - Listar arquivos modificados/criados
+- **Anotar a nova versão bumpada**
 
-### 3. Commit das Mudanças
+### 4. Commit das Mudanças
 ```powershell
-# Staged changes
+# Staged changes (INCLUI o .csproj com versão atualizada)
 git add .
 
 # Commit descritivo seguindo convenção
@@ -182,6 +209,7 @@ git commit -m "feat(gear): implementa tracking empírico de desgaste de gear
 - Aviso visual no SynthHelper quando gear < threshold
 - UI Settings para gerenciar tracking
 
+Version: 2.10.0.0
 Closes #[ISSUE_NUMBER]"
 ```
 
@@ -194,31 +222,32 @@ Closes #[ISSUE_NUMBER]"
 
 **Scopes comuns:** `simulator`, `solver`, `ui`, `config`, `hooks`, `gear`, `macro`
 
-### 4. Build e Deploy
+### 5. Build e Deploy
 ```powershell
 # Build release
 dotnet build Craftimizer/Craftimizer.csproj -c Release
 
 # O plugin compilado estará em:
-# Craftimizer/bin/Release/net10.0-windows/win-x64/Craftimizer.dll
-# Craftimizer/bin/Release/net10.0-windows/win-x64/Craftimizer.json
+# Craftimizer/bin/Release/Craftimizer.dll
+# Craftimizer/bin/Release/Craftimizer.json
 
 # Para deploy local (testing):
-# Copiar para: %APPDATA%\XIVLauncher\devPlugins\Craftimizer\
-Copy-Item -Path "Craftimizer\bin\Release\net10.0-windows\win-x64\*" `
-          -Destination "$env:APPDATA\XIVLauncher\devPlugins\Craftimizer\" `
-          -Recurse -Force
+$destPath = "$env:APPDATA\XIVLauncher\devPlugins\Craftimizer"
+if (!(Test-Path $destPath)) { New-Item -ItemType Directory -Path $destPath -Force | Out-Null }
+Copy-Item -Path "Craftimizer\bin\Release\*" -Destination $destPath -Recurse -Force
 
 # Para push ao repositório:
 git push origin main
 ```
 
-### 5. Checklist Pós-Implementação
+### 6. Checklist Pós-Implementação
 - [ ] ✅ Código compila sem erros (Release build)
 - [ ] ✅ Testes passando (se houver testes relacionados)
+- [ ] ✅ **Versão bumpada corretamente (antes do commit)**
 - [ ] ✅ Documentação do backlog atualizada
-- [ ] ✅ Commit realizado com mensagem descritiva
+- [ ] ✅ Commit realizado com mensagem descritiva + versão
 - [ ] ✅ Build de release gerado
+- [ ] ✅ Deploy local realizado
 - [ ] ⏳ Teste in-game requerido (mencionar ao usuário)
 
 **IMPORTANTE:** Sempre mencione ao usuário quando teste manual in-game for necessário, pois o agente não tem acesso ao jogo.
