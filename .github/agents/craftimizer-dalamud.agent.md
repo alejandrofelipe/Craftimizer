@@ -147,6 +147,82 @@ dotnet build Craftimizer/Craftimizer.csproj -c Release
 dotnet test Test/Craftimizer.Test.csproj
 ```
 
+## Workflow de Implementação de Backlog
+
+Ao concluir a implementação de uma tarefa do backlog, **sempre** siga este fluxo:
+
+### 1. Validação Pré-Commit
+```powershell
+# Verificar erros de compilação
+dotnet build Craftimizer/Craftimizer.csproj -c Release
+
+# Rodar testes (se aplicável)
+dotnet test Test/Craftimizer.Test.csproj
+
+# Verificar problemas no editor
+# Use get_errors para listar warnings/errors do VS Code
+```
+
+### 2. Atualizar Documentação
+- Atualizar arquivo de backlog correspondente (ex: `backlog/PROGRESS.md`)
+- Marcar tarefas concluídas com ✅
+- Adicionar notas sobre decisões de implementação
+- Listar arquivos modificados/criados
+
+### 3. Commit das Mudanças
+```powershell
+# Staged changes
+git add .
+
+# Commit descritivo seguindo convenção
+git commit -m "feat(gear): implementa tracking empírico de desgaste de gear
+
+- Adiciona GearWearTracker.cs com aprendizado de taxa de desgaste
+- Configuração opt-in (default: OFF)
+- Aviso visual no SynthHelper quando gear < threshold
+- UI Settings para gerenciar tracking
+
+Closes #[ISSUE_NUMBER]"
+```
+
+**Convenção de mensagens de commit:**
+- `feat(scope):` para novas funcionalidades
+- `fix(scope):` para correções de bugs
+- `refactor(scope):` para refatorações
+- `docs(scope):` para documentação
+- `chore(scope):` para tarefas de manutenção
+
+**Scopes comuns:** `simulator`, `solver`, `ui`, `config`, `hooks`, `gear`, `macro`
+
+### 4. Build e Deploy
+```powershell
+# Build release
+dotnet build Craftimizer/Craftimizer.csproj -c Release
+
+# O plugin compilado estará em:
+# Craftimizer/bin/Release/net10.0-windows/win-x64/Craftimizer.dll
+# Craftimizer/bin/Release/net10.0-windows/win-x64/Craftimizer.json
+
+# Para deploy local (testing):
+# Copiar para: %APPDATA%\XIVLauncher\devPlugins\Craftimizer\
+Copy-Item -Path "Craftimizer\bin\Release\net10.0-windows\win-x64\*" `
+          -Destination "$env:APPDATA\XIVLauncher\devPlugins\Craftimizer\" `
+          -Recurse -Force
+
+# Para push ao repositório:
+git push origin main
+```
+
+### 5. Checklist Pós-Implementação
+- [ ] ✅ Código compila sem erros (Release build)
+- [ ] ✅ Testes passando (se houver testes relacionados)
+- [ ] ✅ Documentação do backlog atualizada
+- [ ] ✅ Commit realizado com mensagem descritiva
+- [ ] ✅ Build de release gerado
+- [ ] ⏳ Teste in-game requerido (mencionar ao usuário)
+
+**IMPORTANTE:** Sempre mencione ao usuário quando teste manual in-game for necessário, pois o agente não tem acesso ao jogo.
+
 ## Referências Externas
 
 - **Dalamud SDK**: https://github.com/goatcorp/Dalamud.NET.Sdk
