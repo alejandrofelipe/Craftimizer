@@ -244,7 +244,18 @@ public sealed partial class MacroEditor
         ImGui.GetWindowDrawList().AddLine(pos, pos + new Vector2(availSpace, 0), ImGui.GetColorU32(ImGuiCol.Border));
         ImGui.Dummy(default);
         if (SolverRunning && SolverObject is { } solver)
-            DynamicBars.DrawProgressBar(solver, _plugin.Configuration.ProgressType, availSpace);
+        {
+            var snapshot = ProgressBarComponent.FromSolver(solver, "Solver");
+            var config = new ProgressBarComponent.VisualConfig(
+                Mode: ProgressBarComponent.DisplayMode.Horizontal,
+                ColorTheme: _plugin.Configuration.ProgressType,
+                Width: availSpace,
+                ShowPercentage: true,
+                ShowDetailedTooltip: true
+            );
+            
+            ProgressBarComponent.DrawSingle(snapshot, config);
+        }
         DrawMacroActions(availSpace);
     }
 }

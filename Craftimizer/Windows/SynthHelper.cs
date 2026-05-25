@@ -286,11 +286,21 @@ public sealed unsafe class SynthHelper : Window, IDisposable
 
         DrawMacroExecutionProgress();
 
-        if (Session.SolverRunning && Session.SolverObject is { } solver)
+        if (Session.SolverSnapshots.Any())
         {
             ImGuiHelpers.ScaledDummy(5);
             ImGuiUtils.DrawStateChip(ImGuiUtils.SolverState.Solving);
-            DynamicBars.DrawProgressBar(solver, _plugin.Configuration.ProgressType);
+            
+            var config = new ProgressBarComponent.VisualConfig(
+                Mode: ProgressBarComponent.DisplayMode.Horizontal,
+                ColorTheme: _plugin.Configuration.ProgressType,
+                Width: ImGui.GetContentRegionAvail().X,
+                ShowPercentage: true,
+                ShowDetailedTooltip: true,
+                ShowSummaryWhenAggregated: true
+            );
+            
+            ProgressBarComponent.DrawAggregated(Session.SolverSnapshots, config);
         }
 
         DrawMacroActions();

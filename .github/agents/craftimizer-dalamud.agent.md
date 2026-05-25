@@ -1,12 +1,44 @@
----
 name: craftimizer-dalamud
 description: >
   Especialista em desenvolvimento e manutenção do plugin Craftimizer para FFXIV via Dalamud.
   Use para: atualizar o plugin para novas versões do jogo; corrigir breaking changes do Dalamud SDK;
   modificar lógica do simulador de crafting; atualizar Lumina sheets; trabalhar com FFXIVClientStructs;
   ajustar o solver MCTS/Raphael; debug de hooks e interop com o jogo; builds e testes do plugin.
-tools:vscode/runCommand, vscode/vscodeAPI, vscode/extensions, execute/runNotebookCell, execute/getTerminalOutput, execute/killTerminal, execute/sendToTerminal, execute/createAndRunTask, execute/runInTerminal, read/getNotebookSummary, read/problems, read/readFile, read/viewImage, read/terminalSelection, read/terminalLastCommand, agent/runSubagent, edit/createDirectory, edit/createFile, edit/createJupyterNotebook, edit/editFiles, edit/editNotebook, edit/rename, search/changes, search/codebase, search/fileSearch, search/listDirectory, search/textSearch, search/usages, web/fetch, web/githubRepo, web/githubTextSearch, todo
-[vscode/runCommand, vscode/toolSearch, execute/runNotebookCell, execute/getTerminalOutput, execute/killTerminal, execute/sendToTerminal, execute/createAndRunTask, execute/runInTerminal, read/getNotebookSummary, read/problems, read/readFile, read/viewImage, read/terminalSelection, read/terminalLastCommand, agent/runSubagent, edit/createDirectory, edit/createFile, edit/createJupyterNotebook, edit/editFiles, edit/editNotebook, edit/rename, search/changes, search/codebase, search/fileSearch, search/listDirectory, search/searchResults, search/textSearch, search/usages, todo]
+tools:
+  - vscode/runCommand
+  - vscode/vscodeAPI
+  - vscode/extensions
+  - vscode/toolSearch
+  - execute/runNotebookCell
+  - execute/getTerminalOutput
+  - execute/killTerminal
+  - execute/sendToTerminal
+  - execute/createAndRunTask
+  - execute/runInTerminal
+  - read/getNotebookSummary
+  - read/problems
+  - read/readFile
+  - read/viewImage
+  - read/terminalSelection
+  - read/terminalLastCommand
+  - agent/runSubagent
+  - edit/createDirectory
+  - edit/createFile
+  - edit/createJupyterNotebook
+  - edit/editFiles
+  - edit/editNotebook
+  - edit/rename
+  - search/changes
+  - search/codebase
+  - search/fileSearch
+  - search/listDirectory
+  - search/searchResults
+  - search/textSearch
+  - search/usages
+  - web/fetch
+  - web/githubRepo
+  - web/githubTextSearch
+  - todo
 ---
 
 # Agente Especialista — Craftimizer (Dalamud Plugin para FFXIV)

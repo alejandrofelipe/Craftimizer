@@ -133,48 +133,22 @@ internal static class DynamicBars
         }
     }
 
+    /// <summary>
+    /// Legacy method for drawing progress bars. Use ProgressBarComponent instead for new code.
+    /// This method is kept for backward compatibility during migration.
+    /// </summary>
+    [Obsolete("Use ProgressBarComponent.DrawProgressBarCompat() or ProgressBarComponent.DrawSingle() instead")]
     public static void DrawProgressBar(Solver.Solver solver, Configuration.ProgressBarType progressType, float? availSpace = null)
     {
-        var spacing = ImGui.GetStyle().ItemSpacing.X;
-        availSpace ??= ImGui.GetContentRegionAvail().X;
-
-        var fraction = solver.ProgressMax > 0 ? (float)solver.ProgressValue / solver.ProgressMax : 0f;
-        if (progressType == Configuration.ProgressBarType.None)
-        {
-            ImGui.AlignTextToFramePadding();
-            var displayFraction = Math.Clamp(fraction, 0f, 1f);
-            ImGuiUtils.TextCentered(solver.IsIndeterminate ? "..." : $"{displayFraction * 100:N0}%", availSpace.Value);
-
-            if (ImGui.IsItemHovered())
-                DrawProgressBarTooltip(solver);
-            return;
-        }
-
-        var percentWidth = ImGui.CalcTextSize("100%").X;
-        var progressWidth = availSpace.Value;
-        var progressColors = Colors.GetSolverProgressColors(solver.ProgressStage, progressType);
-
-        fraction = Math.Clamp(fraction, 0, 1);
-
-        if (!solver.IsIndeterminate)
-            progressWidth -= percentWidth + spacing;
-        else
-            fraction = (float)-ImGui.GetTime() * .5f;
-
-        using (ImRaii.PushColor(ImGuiCol.FrameBg, progressColors.Background))
-        using (ImRaii.PushColor(ImGuiCol.PlotHistogram, progressColors.Foreground))
-            ImGuiUtils.ProgressBar(fraction, new(progressWidth, ImGui.GetFrameHeight()));
-        if (ImGui.IsItemHovered())
-            DrawProgressBarTooltip(solver);
-
-        if (!solver.IsIndeterminate)
-        {
-            ImGui.SameLine(0, spacing);
-            ImGui.AlignTextToFramePadding();
-            ImGuiUtils.TextRight($"{fraction * 100:N0}%", percentWidth);
-        }
+        // Delegate to ProgressBarComponent for consistency
+        ProgressBarComponent.DrawProgressBarCompat(solver, progressType, availSpace);
     }
 
+    /// <summary>
+    /// Legacy method for drawing progress bar tooltips. Use ProgressBarComponent tooltips instead.
+    /// This method is kept for backward compatibility during migration.
+    /// </summary>
+    [Obsolete("Tooltip is now handled automatically by ProgressBarComponent")]
     public static void DrawProgressBarTooltip(Solver.Solver solver)
     {
         string tooltip;

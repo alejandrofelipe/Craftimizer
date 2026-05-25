@@ -27,6 +27,10 @@ public sealed class Plugin : IDalamudPlugin
     public MacroList ListWindow { get; private set; }
     public MacroEditor? EditorWindow { get; private set; }
     public MacroClipboard? ClipboardWindow { get; private set; }
+    
+#if DEBUG
+    public ProgressBarTestWindow? TestWindow { get; private set; }
+#endif
 
     public Configuration Configuration { get; }
     public MacroRepository MacroRepository { get; }
@@ -70,6 +74,11 @@ public sealed class Plugin : IDalamudPlugin
         RecipeNoteWindow = new(this);
         SynthHelperWindow = new(this);
         ListWindow = new(this);
+
+#if DEBUG
+        TestWindow = new(Configuration);
+        WindowSystem.AddWindow(TestWindow);
+#endif
 
         // Trigger static constructors so a hitch doesn't occur on first RecipeNote frame.
         FoodStatus.Initialize();
@@ -153,6 +162,18 @@ public sealed class Plugin : IDalamudPlugin
         ListWindow.BringToFront();
     }
 
+#if DEBUG
+    [Command(name: "/progresstest", description: "[DEBUG] Open the progress bar test window.")]
+    public void OpenProgressBarTestWindow()
+    {
+        if (TestWindow != null)
+        {
+            TestWindow.IsOpen = true;
+            TestWindow.BringToFront();
+        }
+    }
+#endif
+
     public static void OpenCraftingLog()
     {
         Chat.SendMessage("/craftinglog");
@@ -188,6 +209,9 @@ public sealed class Plugin : IDalamudPlugin
         ListWindow.Dispose();
         EditorWindow?.Dispose();
         ClipboardWindow?.Dispose();
+#if DEBUG
+        TestWindow?.Dispose();
+#endif
         IconManager.Dispose();
         Hooks.Dispose();
         Icon.Dispose();

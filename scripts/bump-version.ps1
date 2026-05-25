@@ -29,7 +29,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$csproj = "$PSScriptRoot\Craftimizer\Craftimizer.csproj"
+$root   = Split-Path $PSScriptRoot -Parent
+$csproj = "$root\Craftimizer\Craftimizer.csproj"
 $content = Get-Content $csproj -Raw
 
 # --- parse current version ---

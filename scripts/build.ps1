@@ -29,7 +29,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$root     = $PSScriptRoot
+$root     = Split-Path $PSScriptRoot -Parent
 $csproj   = "$root\Craftimizer\Craftimizer.csproj"
 
 # Prefer Scoop-installed SDK; fall back to PATH

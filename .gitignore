@@ -1,6 +1,35 @@
+# Build outputs
 .vs/
 obj/
 bin/
 *.user
+
+# Distribution artifacts
+dist/
+*.zip
+
+# Benchmark results
 BenchmarkDotNet.Artifacts/
+
+# Test results
 Test/TestResults/
+
+# Backlog and design files (internal planning)
+backlog/
+design/
+
+# Internal documentation (not for repo)
+*.Examples.md
+*.README.md
+
+# IDE and OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Package lock files (optional - remove if you want to track them)
+packages.lock.json

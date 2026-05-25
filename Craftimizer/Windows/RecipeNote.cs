@@ -884,7 +884,16 @@ public sealed unsafe class RecipeNote : Window, IDisposable
                         if (state.Solver is not { } solver)
                             throw new ArgumentNullException(nameof(state), "Solver should not be null");
 
-                        DynamicBars.DrawProgressBar(solver, _plugin.Configuration.ProgressType, panelWidth);
+                        var snapshot = ProgressBarComponent.FromSolver(solver, "Solver");
+                        var config = new ProgressBarComponent.VisualConfig(
+                            Mode: ProgressBarComponent.DisplayMode.Horizontal,
+                            ColorTheme: _plugin.Configuration.ProgressType,
+                            Width: panelWidth,
+                            ShowPercentage: true,
+                            ShowDetailedTooltip: true
+                        );
+                        
+                        ProgressBarComponent.DrawSingle(snapshot, config);
                         break;
                     }
                 case MacroTaskType.Community:

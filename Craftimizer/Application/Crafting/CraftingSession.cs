@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Sim = Craftimizer.Simulator.Simulator;
 using SimNoRandom = Craftimizer.Simulator.SimulatorNoRandom;
 
@@ -30,6 +31,27 @@ public sealed class CraftingSession : IDisposable
     public int CurrentActionCount { get; private set; }
     public bool IsRecalculateQueued { get; private set; }
 
+    /// <summary>
+    /// Snapshots de progresso do solver para renderização na UI.
+    /// Atualizado periodicamente (100ms) durante execução do solver.
+    /// Lista vazia quando nenhum solver está ativo.
+    /// Thread-safe para leitura durante rendering ImGui.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Ciclo de vida:
+    /// - <b>Início do solver</b>: Lista limpa em CalculateBestMacro()
+    /// - <b>Durante execução</b>: Atualiza a cada 100ms via UpdateSnapshotsPeriodically()
+    /// - <b>Conclusão</b>: Snapshot final com State=Completed adicionado
+    /// - <b>Cancelamento</b>: Snapshot com State=Cancelled preservado
+    /// </para>
+    /// <para>
+    /// Use com <see cref="ProgressBarComponent.DrawAggregated"/> para exibir progresso proporcional.
+    /// Atualmente contém apenas um snapshot (single-solver), mas arquitetura suporta múltiplos.
+    /// </para>
+    /// </remarks>
+    public IReadOnlyList<ProgressBarComponent.ProgressSnapshot> SolverSnapshots => _solverSnapshots;
+
     public ActionType? NextAction => Macro.Count > 0 ? Macro[0].Action : null;
 
     // ── Private session state ──────────────────────────────────────────────────
@@ -40,6 +62,8 @@ public sealed class CraftingSession : IDisposable
     private SimulationState _currentState;
     private List<ActionType> PlayedActions { get; } = [];
     private bool CraftAutoSaved { get; set; }
+    private readonly List<ProgressBarComponent.ProgressSnapshot> _solverSnapshots = [];
+    private CancellationTokenSource? _snapshotUpdateCts;
 
     private readonly global::Craftimizer.Plugin.Plugin _plugin;
 
@@ -200,7 +224,27 @@ public sealed class CraftingSession : IDisposable
     }
 
     /// <summary>Cancels any running solver task.</summary>
-    public void CancelSolver() => SolverTask?.Cancel();
+    public void CancelSolver()
+    {
+        if (SolverObject != null && SolverTask?.Completed == false)
+        {
+            // Preserve current progress in snapshot before cancelling
+            var algorithmName = _plugin.Configuration.SynthHelperSolverConfig.Algorithm.ToString();
+            var snapshot = ProgressBarComponent.FromSolver(SolverObject, algorithmName) with
+            {
+                State = ProgressBarComponent.ProgressState.Cancelled
+            };
+
+            lock (_solverSnapshots)
+            {
+                _solverSnapshots.Clear();
+                _solverSnapshots.Add(snapshot);
+            }
+        }
+
+        SolverTask?.Cancel();
+        _snapshotUpdateCts?.Cancel();
+    }
 
     /// <summary>Triggers a new solver run (same as starting a fresh calculation).</summary>
     public void RequestSolve() => CalculateBestMacro();
@@ -208,6 +252,8 @@ public sealed class CraftingSession : IDisposable
     public void Dispose()
     {
         SolverTask?.Cancel();
+        _snapshotUpdateCts?.Cancel();
+        _snapshotUpdateCts?.Dispose();
     }
 
     // ── Private solver/state logic ─────────────────────────────────────────────
@@ -215,6 +261,10 @@ public sealed class CraftingSession : IDisposable
     private void CalculateBestMacro()
     {
         SolverTask?.Cancel();
+        _snapshotUpdateCts?.Cancel();
+        _snapshotUpdateCts?.Dispose();
+        _snapshotUpdateCts = null;
+        _solverSnapshots.Clear();
         Macro.ClearQueue();
         Macro.Clear();
 
@@ -244,8 +294,35 @@ public sealed class CraftingSession : IDisposable
         solver.OnWarn += t => global::Craftimizer.Plugin.Plugin.DisplaySolverWarning(t);
         solver.OnNewAction += EnqueueAction;
         SolverObject = solver;
+
+        // Start periodic snapshot updates
+        _snapshotUpdateCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+        var snapshotTask = Task.Run(() => UpdateSnapshotsPeriodically(solver, _snapshotUpdateCts.Token), _snapshotUpdateCts.Token);
+
         solver.Start();
         _ = solver.GetTask().GetAwaiter().GetResult();
+
+        // Stop snapshot updates and create final snapshot
+        _snapshotUpdateCts?.Cancel();
+        try
+        {
+            snapshotTask.GetAwaiter().GetResult();
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when we cancel
+        }
+
+        // Create final completed snapshot
+        lock (_solverSnapshots)
+        {
+            _solverSnapshots.Clear();
+            var algorithmName = config.Algorithm.ToString();
+            _solverSnapshots.Add(ProgressBarComponent.FromSolver(solver, algorithmName) with
+            {
+                State = ProgressBarComponent.ProgressState.Completed
+            });
+        }
 
         token.ThrowIfCancellationRequested();
 
@@ -310,4 +387,42 @@ public sealed class CraftingSession : IDisposable
 
     private Sim CreateSim(in SimulationState state) =>
         _plugin.Configuration.ConditionRandomness ? new Sim() { State = state } : new SimNoRandom() { State = state };
+
+    /// <summary>
+    /// Periodically polls the solver for progress and updates the snapshots list.
+    /// Runs in a background task until cancelled.
+    /// </summary>
+    /// <summary>
+    /// Atualiza snapshots periodicamente durante execução do solver.
+    /// Roda em background task separada, polling a cada 100ms.
+    /// Thread-safe via lock() na lista de snapshots.
+    /// </summary>
+    /// <param name="solver">Instância do solver sendo monitorado</param>
+    /// <param name="token">Token de cancelamento para parar polling</param>
+    private async Task UpdateSnapshotsPeriodically(Solver.Solver solver, CancellationToken token)
+    {
+        var algorithmName = _plugin.Configuration.SynthHelperSolverConfig.Algorithm.ToString();
+        
+        while (!token.IsCancellationRequested)
+        {
+            try
+            {
+                // Update snapshot from current solver state
+                var snapshot = ProgressBarComponent.FromSolver(solver, algorithmName);
+                
+                lock (_solverSnapshots)
+                {
+                    _solverSnapshots.Clear();
+                    _solverSnapshots.Add(snapshot);
+                }
+
+                // Update every 100ms for smooth progress
+                await Task.Delay(100, token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+        }
+    }
 }
