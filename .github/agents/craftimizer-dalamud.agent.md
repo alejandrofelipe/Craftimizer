@@ -231,3 +231,4 @@ git push origin main
 - **Lumina**: https://github.com/NotAdam/Lumina
 - **Raphael.Net**: https://www.nuget.org/packages/Raphael.Net
 - **Plugin Original**: https://github.com/WorkingRobot/Craftimizer
+- **Este Repositório**: https://github.com/alejandrofelipe/afs-craftimizer
