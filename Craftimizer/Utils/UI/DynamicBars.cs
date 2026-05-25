@@ -19,7 +19,7 @@ internal static class DynamicBars
     }
 
 
-    private static IDisposable? PushCollectableColor(this in BarData bar, float collectability, bool colorUnmetThreshold = true)
+    private static ImRaii.ColorDisposable? PushCollectableColor(this in BarData bar, float collectability, bool colorUnmetThreshold = true)
     {
         if (bar.Collectability is not { } collectabilities)
             return null;

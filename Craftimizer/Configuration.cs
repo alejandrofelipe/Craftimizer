@@ -1,4 +1,5 @@
 using Craftimizer.Solver;
+using Craftimizer.Utils;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;

@@ -262,6 +262,35 @@ public sealed partial class MacroEditor
             }
         }
 
+        // Gear condition indicator (if available)
+        if (_plugin.Configuration.ShowGearCondition)
+        {
+            var gearCondition = Gearsets.GetMinimumGearCondition();
+            if (gearCondition.HasValue)
+            {
+                ImGuiHelpers.ScaledDummy(2);
+                
+                var conditionPercent = gearCondition.Value;
+                var conditionColor = conditionPercent switch
+                {
+                    >= 70f => new Vector4(0.3f, 0.9f, 0.3f, 1f),
+                    >= 30f => new Vector4(0.9f, 0.9f, 0.3f, 1f),
+                    _      => new Vector4(0.9f, 0.3f, 0.3f, 1f)
+                };
+
+                using (ImRaii.PushColor(ImGuiCol.Text, conditionColor))
+                {
+                    ImGuiUtils.AlignCentered(ImGui.CalcTextSize($"⚙ Gear: {conditionPercent:0}%").X);
+                    ImGui.TextUnformatted($"⚙ Gear: {conditionPercent:0}%");
+                }
+                
+                if (ImGui.IsItemHovered())
+                {
+                    ImGuiUtils.Tooltip("Condição mínima do equipamento atual.\nRepare o equipamento se estiver baixo.");
+                }
+            }
+        }
+
         return oldStats != CharacterStats;
     }
 

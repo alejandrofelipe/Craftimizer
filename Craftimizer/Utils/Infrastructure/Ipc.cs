@@ -19,7 +19,9 @@ public sealed class Ipc
     {
         foreach (var prop in typeof(Ipc).GetProperties(BindingFlags.Instance | BindingFlags.Public))
         {
+#pragma warning disable MA0179 // Use Attribute.IsDefined - False positive: we need the attribute instance, not just existence check
             if (prop.GetCustomAttribute<IPCCallAttribute>() is not { } attr)
+#pragma warning restore MA0179
                 continue;
 
             if (prop.GetMethod is not { } getMethod)

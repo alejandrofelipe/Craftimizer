@@ -1,3 +1,4 @@
+using Craftimizer.Plugin;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using System;
 using System.Collections.Generic;
@@ -90,8 +91,8 @@ public class GearWearTracker : IDisposable
         _currentRecipeId = recipeId;
         
         // Get recipe level
-        var recipe = LuminaSheets.RecipeSheet.GetRow(recipeId);
-        _currentRecipeLevel = recipe?.RecipeLevelTable.RowId ?? 0;
+        var recipe = LuminaSheets.RecipeSheet.GetRowOrDefault(recipeId);
+        _currentRecipeLevel = (ushort)(recipe?.RecipeLevelTable.RowId ?? 0);
 
         // Capture pre-craft condition
         _preCraftCondition = Gearsets.GetMinimumGearCondition();

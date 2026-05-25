@@ -708,6 +708,34 @@ public sealed unsafe class RecipeNote : Window, IDisposable
                 break;
         }
 
+        // Gear condition indicator (if CraftStatus is OK)
+        if (CraftStatus == CraftableStatus.OK && _plugin.Configuration.ShowGearCondition)
+        {
+            var gearCondition = Gearsets.GetMinimumGearCondition();
+            if (gearCondition.HasValue)
+            {
+                ImGuiHelpers.ScaledDummy(2);
+                
+                var conditionPercent = gearCondition.Value;
+                var conditionColor = conditionPercent switch
+                {
+                    >= 70f => new Vector4(0.3f, 0.9f, 0.3f, 1f),
+                    >= 30f => new Vector4(0.9f, 0.9f, 0.3f, 1f),
+                    _      => new Vector4(0.9f, 0.3f, 0.3f, 1f)
+                };
+
+                using (ImRaii.PushColor(ImGuiCol.Text, conditionColor))
+                {
+                    ImGuiUtils.TextCentered($"⚙ Gear: {conditionPercent:0}%");
+                }
+                
+                if (ImGui.IsItemHovered())
+                {
+                    ImGuiUtils.Tooltip("Condição mínima do equipamento atual.\nRepare antes de craftar se estiver baixo.");
+                }
+            }
+        }
+
         using var _spacing = ImRaii.PushStyle(ImGuiStyleVar.ItemSpacing, Vector2.Zero);
         ImGui.Dummy(Vector2.Zero);
     }

@@ -198,7 +198,7 @@ public sealed class MacroList : Window, IDisposable
     private string searchText = string.Empty;
     private List<Macro> sortedMacros = null!;
     private bool isUnsorted = true;
-    private int currentPage = 0;
+    private int currentPage;
     private void DrawSearchBar()
     {
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);

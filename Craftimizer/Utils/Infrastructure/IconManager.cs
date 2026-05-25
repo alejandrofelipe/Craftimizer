@@ -3,6 +3,7 @@ using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Textures;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Utility;
+using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
@@ -61,7 +62,10 @@ public sealed class IconManager : IDisposable
         }
     }
 
-    // TODO: Unload when unused, but with a custom timer?
+    /// <summary>
+    /// Cached icon wrapper that keeps texture loaded in memory.
+    /// Automatically unloaded by IMemoryCache after expiration.
+    /// </summary>
     private sealed class CachedIcon(ISharedImmediateTexture source) : ITextureIcon
     {
         private LoadedIcon Base { get; } = new(source);
@@ -78,8 +82,60 @@ public sealed class IconManager : IDisposable
         }
     }
 
-    private Dictionary<(uint Id, bool IsHq), CachedIcon> IconCache { get; } = [];
-    private Dictionary<string, CachedIcon> AssemblyTextureCache { get; } = [];
+    private readonly IMemoryCache _cache;
+    private readonly Configuration _config;
+
+    public IconManager(Configuration config)
+    {
+        _config = config;
+        _cache = new MemoryCache(new MemoryCacheOptions
+        {
+            SizeLimit = _config.IconCacheSizeLimit > 0 ? _config.IconCacheSizeLimit : null,
+            CompactionPercentage = 0.25, // Remove 25% when limit reached
+            ExpirationScanFrequency = TimeSpan.FromMinutes(1)
+        });
+    }
+
+    private MemoryCacheEntryOptions CreateIconOptions()
+    {
+        if (!_config.EnableIconCacheEviction)
+        {
+            // No eviction → icons remain indefinitely
+            return new MemoryCacheEntryOptions()
+                .SetSize(1);
+        }
+
+        return new MemoryCacheEntryOptions()
+            .SetSize(1)
+            .SetSlidingExpiration(TimeSpan.FromMinutes(_config.IconCacheSlidingExpirationMinutes))
+            .SetAbsoluteExpiration(TimeSpan.FromMinutes(_config.IconCacheAbsoluteExpirationMinutes))
+            .RegisterPostEvictionCallback(OnIconEvicted);
+    }
+
+    private MemoryCacheEntryOptions CreateAssemblyTextureOptions()
+    {
+        if (!_config.EnableIconCacheEviction)
+        {
+            return new MemoryCacheEntryOptions()
+                .SetSize(1);
+        }
+
+        // Assembly textures rarely change, longer TTL (6x sliding, 4x absolute)
+        return new MemoryCacheEntryOptions()
+            .SetSize(1)
+            .SetSlidingExpiration(TimeSpan.FromMinutes(_config.IconCacheSlidingExpirationMinutes * 6))
+            .SetAbsoluteExpiration(TimeSpan.FromMinutes(_config.IconCacheAbsoluteExpirationMinutes * 4))
+            .RegisterPostEvictionCallback(OnIconEvicted);
+    }
+
+    private void OnIconEvicted(object key, object? value, EvictionReason reason, object? state)
+    {
+        if (value is CachedIcon icon)
+        {
+            Log.Debug($"[IconCache] Evicted {key}: {reason}");
+            icon.Release();
+        }
+    }
 
     private static ISharedImmediateTexture GetIconInternal(uint id, bool isHq = false) =>
         Service.TextureProvider.GetFromGameIcon(new GameIconLookup(id, itemHq: isHq));
@@ -95,23 +151,28 @@ public sealed class IconManager : IDisposable
 
     public ITextureIcon GetIconCached(uint id, bool isHq = false)
     {
-        if (IconCache.TryGetValue((id, isHq), out var icon))
-            return icon;
-        return IconCache[(id, isHq)] = new(GetIconInternal(id, isHq));
+        var key = $"icon:{id}:{isHq}";
+        return _cache.GetOrCreate(key, entry =>
+        {
+            entry.SetOptions(CreateIconOptions());
+            Log.Debug($"[IconCache] Miss: {key}, loading...");
+            return new CachedIcon(GetIconInternal(id, isHq));
+        })!;
     }
 
     public ITextureIcon GetAssemblyTextureCached(string filename)
     {
-        if (AssemblyTextureCache.TryGetValue(filename, out var texture))
-            return texture;
-        return AssemblyTextureCache[filename] = new(GetAssemblyTextureInternal(filename));
+        var key = $"asm:{filename}";
+        return _cache.GetOrCreate(key, entry =>
+        {
+            entry.SetOptions(CreateAssemblyTextureOptions());
+            Log.Debug($"[IconCache] Miss: {key}, loading...");
+            return new CachedIcon(GetAssemblyTextureInternal(filename));
+        })!;
     }
 
     public void Dispose()
     {
-        foreach (var value in IconCache.Values)
-            value.Release();
-        foreach (var value in AssemblyTextureCache.Values)
-            value.Release();
+        (_cache as IDisposable)?.Dispose();
     }
 }

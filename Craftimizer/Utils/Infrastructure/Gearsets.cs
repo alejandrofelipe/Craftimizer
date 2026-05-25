@@ -13,7 +13,15 @@ public static unsafe class Gearsets
 {
     public record struct GearsetStats(int CP, int Craftsmanship, int Control);
     public record struct GearsetMateria(ushort Type, ushort Grade);
-    public record struct GearsetItem(uint ItemId, bool IsHq, GearsetMateria[] Materia);
+    
+    /// <summary>
+    /// Represents a single gear item in a gearset.
+    /// </summary>
+    /// <param name="ItemId">Item ID from Lumina sheets</param>
+    /// <param name="IsHq">Whether the item is high quality</param>
+    /// <param name="Materia">Materia socketed in the item</param>
+    /// <param name="Condition">Item condition/durability (0-30000). Max condition is 30000 (100%).</param>
+    public record struct GearsetItem(uint ItemId, bool IsHq, GearsetMateria[] Materia, ushort Condition);
 
     private static readonly GearsetStats BaseStats = new(180, 0, 0);
 
@@ -27,7 +35,17 @@ public static unsafe class Gearsets
         for (var i = 0; i < container->Size; ++i)
         {
             var item = container->Items[i];
-            items[i] = new(item.ItemId, item.Flags.HasFlag(InventoryItem.ItemFlags.HighQuality), GetMaterias(item.Materia, item.MateriaGrades));
+            
+            // Read condition from InventoryItem (0-30000 range)
+            // If item has no durability (e.g., soul crystal), Condition will be 0
+            var condition = item.Condition;
+            
+            items[i] = new(
+                item.ItemId, 
+                item.Flags.HasFlag(InventoryItem.ItemFlags.HighQuality), 
+                GetMaterias(item.Materia, item.MateriaGrades),
+                condition
+            );
         }
         return items;
     }
@@ -39,7 +57,8 @@ public static unsafe class Gearsets
         for (var i = 0; i < 14; ++i)
         {
             var item = gearsetItems[i];
-            items[i] = new(item.ItemId % 1000000, item.ItemId > 1000000, GetMaterias(item.Materia, item.MateriaGrades));
+            // Saved gearsets don't store condition, default to max (30000)
+            items[i] = new(item.ItemId % 1000000, item.ItemId > 1000000, GetMaterias(item.Materia, item.MateriaGrades), 30000);
         }
         return items;
     }
@@ -140,6 +159,67 @@ public static unsafe class Gearsets
 
     public static bool IsSplendorousTool(GearsetItem item) =>
         LuminaSheets.ItemSheetEnglish.GetRow(item.ItemId).Description.ToString().Contains("Increases to quality are 1.75 times higher than normal when material condition is Good.", StringComparison.Ordinal);
+
+    /// <summary>
+    /// Gets the minimum gear condition percentage among all equipped items.
+    /// </summary>
+    /// <returns>Percentage (0-100), or null if no items are equipped or data unavailable.</returns>
+    public static float? GetMinimumGearCondition()
+    {
+        var container = InventoryManager.Instance()->GetInventoryContainer(InventoryType.EquippedItems);
+        if (container == null)
+            return null;
+
+        var gearItems = GetGearsetItems(container);
+        
+        // Filter out empty slots and items without durability (e.g., soul crystals)
+        var itemsWithDurability = gearItems
+            .Where(item => item.ItemId != 0 && item.Condition > 0)
+            .ToArray();
+
+        if (itemsWithDurability.Length == 0)
+            return null;
+
+        // Calculate percentage: 100 * Condition / 30000
+        var minCondition = itemsWithDurability.Min(item => item.Condition);
+        return 100f * minCondition / 30000f;
+    }
+
+    /// <summary>
+    /// Summary of gear condition for all equipped items.
+    /// </summary>
+    /// <param name="Min">Minimum condition percentage across all items (0-100)</param>
+    /// <param name="Max">Maximum condition percentage across all items (0-100)</param>
+    /// <param name="Average">Average condition percentage across all items (0-100)</param>
+    public record struct GearConditionSummary(float Min, float Max, float Average);
+
+    /// <summary>
+    /// Gets a summary of gear condition for all equipped items.
+    /// </summary>
+    /// <returns>Summary with min/max/average percentages, or null if no items equipped.</returns>
+    public static GearConditionSummary? GetGearConditionSummary()
+    {
+        var container = InventoryManager.Instance()->GetInventoryContainer(InventoryType.EquippedItems);
+        if (container == null)
+            return null;
+
+        var gearItems = GetGearsetItems(container);
+        
+        // Filter out empty slots and items without durability
+        var conditions = gearItems
+            .Where(item => item.ItemId != 0 && item.Condition > 0)
+            .Select(item => 100f * item.Condition / 30000f)
+            .ToArray();
+
+        if (conditions.Length == 0)
+            return null;
+
+        return new GearConditionSummary(
+            Min: conditions.Min(),
+            Max: conditions.Max(),
+            Average: conditions.Average()
+        );
+    }
 
     // https://github.com/ffxiv-teamcraft/ffxiv-teamcraft/blob/24d0db2d9676f264edf53651b21005305267c84c/apps/client/src/app/modules/gearsets/materia.service.ts#L265
     private static int CalculateParamCap(Item item, uint paramId)

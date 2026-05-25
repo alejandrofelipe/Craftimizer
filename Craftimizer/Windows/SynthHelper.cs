@@ -515,7 +515,7 @@ public sealed unsafe class SynthHelper : Window, IDisposable
                     if (_plugin.Configuration.EnableGearWearTracking && Session.RecipeData != null)
                     {
                         var recipe = Session.RecipeData.Recipe;
-                        var recipeLevel = Session.RecipeData.RecipeInfo.RecipeLevelTableId;
+                        var recipeLevel = (ushort)Session.RecipeData.Table.RowId;
                         var estimate = _plugin.GearWearTracker.EstimateCraftsRemaining(recipe.RowId, recipeLevel);
 
                         if (estimate.HasValue)

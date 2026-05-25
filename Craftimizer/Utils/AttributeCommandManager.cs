@@ -24,7 +24,9 @@ public sealed class AttributeCommandManager : IDisposable
         var target = plugin;
         foreach (var method in target.GetType().GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
         {
+#pragma warning disable MA0179 // Use Attribute.IsDefined - False positive: we need the attribute instance, not just existence check
             if (method.GetCustomAttribute<CommandAttribute>() is not { } command)
+#pragma warning restore MA0179
                 continue;
 
             var takesParams = method.GetParameters().Length != 0;
