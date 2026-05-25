@@ -84,13 +84,56 @@ public partial class Configuration
     public bool SynthHelperDisplayOnlyFirstStep { get; set; }
     public bool SynthHelperAbilityAnts { get; set; }
     public bool CheckDelineations { get; set; } = true;
+    public bool ShowGearCondition { get; set; } = true;
     public ProgressBarType ProgressType { get; set; } = ProgressBarType.Colorful;
 
     public bool PinSynthHelperToWindow { get; set; } = true;
     public bool CollapseSynthHelper { get; set; }
     public bool PinRecipeNoteToWindow { get; set; } = true;
 
+    /// <summary>
+    /// Enable gear wear tracking system (default: false).
+    /// Learns how much gear durability each recipe consumes over time.
+    /// </summary>
+    public bool EnableGearWearTracking { get; set; } = false;
+
+    /// <summary>
+    /// Show warning when gear durability is low (default: true).
+    /// </summary>
+    public bool ShowLowDurabilityWarning { get; set; } = true;
+
+    /// <summary>
+    /// Gear condition threshold (%) to trigger low durability warning (default: 10).
+    /// </summary>
+    public int LowDurabilityThreshold { get; set; } = 10;
+
+    /// <summary>
+    /// Stored gear wear statistics by recipe.
+    /// Key format: "recipeId:recipeLevel"
+    /// </summary>
+    public Dictionary<string, GearWearTracker.GearWearStats> GearWearData { get; set; } = new();
+
     public MacroCopyConfiguration MacroCopy { get; set; } = new();
+
+    /// <summary>
+    /// Enable automatic icon cache cleanup (default: true)
+    /// </summary>
+    public bool EnableIconCacheEviction { get; set; } = true;
+
+    /// <summary>
+    /// Minutes of inactivity before icon is unloaded (default: 5)
+    /// </summary>
+    public int IconCacheSlidingExpirationMinutes { get; set; } = 5;
+
+    /// <summary>
+    /// Maximum minutes icon can stay in cache (default: 30)
+    /// </summary>
+    public int IconCacheAbsoluteExpirationMinutes { get; set; } = 30;
+
+    /// <summary>
+    /// Maximum number of icons in cache (0 = unlimited, default: 1024)
+    /// </summary>
+    public int IconCacheSizeLimit { get; set; } = 1024;
 
     [JsonSourceGenerationOptions(Converters = [typeof(StoredActionTypeConverter)])]
     [JsonSerializable(typeof(Configuration))]

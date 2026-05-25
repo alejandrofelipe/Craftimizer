@@ -470,6 +470,100 @@ public sealed unsafe class SynthHelper : Window, IDisposable
             DynamicBars.DrawRow(allBars);
         }
 
+        // Gear condition indicator
+        if (_plugin.Configuration.ShowGearCondition)
+        {
+            var gearCondition = Gearsets.GetMinimumGearCondition();
+            if (gearCondition.HasValue)
+            {
+                ImGuiHelpers.ScaledDummy(2);
+                
+                var conditionPercent = gearCondition.Value;
+                var conditionColor = conditionPercent switch
+                {
+                    >= 70f => new Vector4(0.3f, 0.9f, 0.3f, 1f), // Verde
+                    >= 30f => new Vector4(0.9f, 0.9f, 0.3f, 1f), // Amarelo
+                    _      => new Vector4(0.9f, 0.3f, 0.3f, 1f)  // Vermelho
+                };
+
+                using (ImRaii.PushColor(ImGuiCol.Text, conditionColor))
+                {
+                    ImGui.TextUnformatted($"⚙ Gear: {conditionPercent:0}%");
+                }
+                
+                if (ImGui.IsItemHovered())
+                {
+                    ImGuiUtils.Tooltip("Condição mínima do equipamento atual.\nValor atualizado em tempo real.");
+                }
+
+                // Low durability warning
+                if (_plugin.Configuration.ShowLowDurabilityWarning && 
+                    conditionPercent <= _plugin.Configuration.LowDurabilityThreshold)
+                {
+                    ImGuiHelpers.ScaledDummy(2);
+                    
+                    // Pulsating warning effect
+                    var pulseAlpha = 0.7f + 0.3f * MathF.Sin((float)ImGui.GetTime() * 3f);
+                    var warningColor = new Vector4(0.9f, 0.3f, 0.3f, pulseAlpha);
+
+                    using (ImRaii.PushColor(ImGuiCol.Text, warningColor))
+                    {
+                        ImGui.TextUnformatted("⚠ LOW GEAR DURABILITY!");
+                    }
+
+                    // Show prediction if tracking is enabled
+                    if (_plugin.Configuration.EnableGearWearTracking && Session.RecipeData != null)
+                    {
+                        var recipe = Session.RecipeData.Recipe;
+                        var recipeLevel = Session.RecipeData.RecipeInfo.RecipeLevelTableId;
+                        var estimate = _plugin.GearWearTracker.EstimateCraftsRemaining(recipe.RowId, recipeLevel);
+
+                        if (estimate.HasValue)
+                        {
+                            var (minCrafts, maxCrafts, confidence) = estimate.Value;
+                            
+                            using (ImRaii.PushColor(ImGuiCol.Text, Colors.TextMuted))
+                            {
+                                if (confidence > 0f)
+                                {
+                                    if (minCrafts == maxCrafts)
+                                        ImGui.TextUnformatted($"Estimated: ~{minCrafts} crafts left");
+                                    else
+                                        ImGui.TextUnformatted($"Estimated: {minCrafts}-{maxCrafts} crafts left");
+                                }
+                                else
+                                {
+                                    ImGui.TextUnformatted($"Estimated: ~{minCrafts} crafts left (no data)");
+                                }
+                            }
+
+                            if (ImGui.IsItemHovered())
+                            {
+                                var tooltip = confidence > 0f
+                                    ? $"Based on {_plugin.Configuration.GearWearData.Values.FirstOrDefault(s => s.RecipeId == recipe.RowId)?.SampleCount ?? 0} crafts of this recipe.\nConfidence: {confidence * 100:F0}%"
+                                    : "No tracking data for this recipe yet.\nUsing conservative estimate (~1% per craft).\nEnable tracking in Settings → General.";
+                                ImGuiUtils.Tooltip(tooltip);
+                            }
+                        }
+                        else
+                        {
+                            using (ImRaii.PushColor(ImGuiCol.Text, Colors.TextMuted))
+                            {
+                                ImGui.TextUnformatted("Repair your gear before continuing!");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        using (ImRaii.PushColor(ImGuiCol.Text, Colors.TextMuted))
+                        {
+                            ImGui.TextUnformatted("Repair your gear before continuing!");
+                        }
+                    }
+                }
+            }
+        }
+
         ImGuiHelpers.ScaledDummy(4);
 
         // Condition row

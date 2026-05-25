@@ -537,6 +537,104 @@ public sealed class Settings : Window, IDisposable
             }
         }
 
+        ImGuiHelpers.ScaledDummy(5);
+
+        using (var panel = ImRaii2.GroupPanel("Icon Cache Management", -1, out _))
+        {
+            DrawOption(
+                "Enable Automatic Cache Cleanup",
+                "Unload unused icons after inactivity period. Disable for maximum performance on high-memory systems.",
+                Config.EnableIconCacheEviction,
+                v => Config.EnableIconCacheEviction = v,
+                ref isDirty,
+                "Automatically frees memory by unloading icons not recently used."
+            );
+
+            if (Config.EnableIconCacheEviction)
+            {
+                DrawOption(
+                    "Sliding Expiration (min)",
+                    "Icon unloaded if not accessed for this duration. Lower values save more memory but may cause brief loading delays.",
+                    Config.IconCacheSlidingExpirationMinutes,
+                    1, 60,
+                    v => Config.IconCacheSlidingExpirationMinutes = v,
+                    ref isDirty
+                );
+
+                DrawOption(
+                    "Max Cache Time (min)",
+                    "Icon unloaded after this time, even if accessed frequently. Prevents memory buildup in long sessions.",
+                    Config.IconCacheAbsoluteExpirationMinutes,
+                    5, 120,
+                    v => Config.IconCacheAbsoluteExpirationMinutes = v,
+                    ref isDirty
+                );
+            }
+
+            DrawOption(
+                "Cache Size Limit",
+                "Maximum icons in cache (0 = unlimited). Recommended: 1024 for typical use, 2048 for power users.",
+                Config.IconCacheSizeLimit,
+                0, 4096,
+                v => Config.IconCacheSizeLimit = v,
+                ref isDirty
+            );
+        }
+
+        ImGuiHelpers.ScaledDummy(5);
+
+        using (var panel = ImRaii2.GroupPanel("Gear Durability Warning", -1, out _))
+        {
+            DrawOption(
+                "Show Low Durability Warning",
+                "Display prominent warning when gear condition is low. Helps prevent failed crafts due to broken gear.",
+                Config.ShowLowDurabilityWarning,
+                v => Config.ShowLowDurabilityWarning = v,
+                ref isDirty,
+                "⚠ Warn me when my crafting gear needs repair soon."
+            );
+
+            if (Config.ShowLowDurabilityWarning)
+            {
+                DrawOption(
+                    "Warning Threshold (%)",
+                    "Show warning when minimum gear condition falls below this percentage.",
+                    Config.LowDurabilityThreshold,
+                    1, 30,
+                    v => Config.LowDurabilityThreshold = v,
+                    ref isDirty
+                );
+            }
+
+            ImGuiHelpers.ScaledDummy(3);
+
+            DrawOption(
+                "Enable Gear Wear Tracking (Experimental)",
+                "Learn how much gear durability each recipe consumes over time. The plugin will monitor your gear condition before and after each craft, building a database of wear rates per recipe. After ~10 crafts of the same recipe, predictions become accurate. Data is stored locally and never shared.",
+                Config.EnableGearWearTracking,
+                v => Config.EnableGearWearTracking = v,
+                ref isDirty,
+                "🔬 Tracks gear wear to predict crafts remaining.\n\nHow it works:\n• Monitors gear condition before/after each craft\n• Stores average wear rate per recipe\n• Predicts remaining crafts with confidence level\n• Requires 10+ samples per recipe for accuracy"
+            );
+
+            if (Config.EnableGearWearTracking && Config.GearWearData.Count > 0)
+            {
+                ImGuiHelpers.ScaledDummy(2);
+                using (ImRaii.PushColor(ImGuiCol.Text, Colors.TextMuted))
+                {
+                    ImGui.TextWrapped($"Tracking data: {Config.GearWearData.Count} recipes monitored, {Config.GearWearData.Values.Sum(s => s.SampleCount)} crafts recorded.");
+                }
+
+                if (ImGui.Button("Clear Tracking Data", OptionButtonSize))
+                {
+                    Config.GearWearData.Clear();
+                    isDirty = true;
+                }
+                if (ImGui.IsItemHovered())
+                    ImGuiUtils.Tooltip("Reset all collected gear wear data. Tracking will start fresh.");
+            }
+        }
+
         if (isDirty)
             Config.Save();
     }

@@ -36,6 +36,7 @@ public sealed class Plugin : IDalamudPlugin
     public MacroRepository MacroRepository { get; }
     public IconManager IconManager { get; }
     public Hooks Hooks { get; }
+    public GearWearTracker GearWearTracker { get; }
     public CommunityMacros CommunityMacros { get; }
     public Ipc Ipc { get; }
     public AttributeCommandManager AttributeCommandManager { get; }
@@ -54,9 +55,10 @@ public sealed class Plugin : IDalamudPlugin
             Configuration.macros.Clear();
             Configuration.Save();
         }
-        IconManager = new();
+        IconManager = new(Configuration);
         Service.IconManager = IconManager;
         Hooks = new(this);
+        GearWearTracker = new(this);
         CommunityMacros = new();
         Ipc = new(pluginInterface);
         AttributeCommandManager = new(this);
@@ -214,6 +216,7 @@ public sealed class Plugin : IDalamudPlugin
 #endif
         IconManager.Dispose();
         Hooks.Dispose();
+        GearWearTracker.Dispose();
         Icon.Dispose();
         MacroRepository.Dispose();
     }
